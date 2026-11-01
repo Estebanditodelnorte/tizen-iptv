@@ -71,10 +71,6 @@ function step(label, fn) {
 }
 
 step('navigate down twice', () => { press(40); press(40); });
-step('digit 3 assigns Kids', () => {
-  press(51);
-  if (Object.values(stored('iptv-cat')).indexOf('Kids') === -1) throw new Error('no Kids mapping stored');
-});
 
 function selectedName() {
   const sel = elements['items'].children.find((c) => c.className === 'ch sel');

@@ -94,7 +94,7 @@ python3 /mnt/c/Users/Public/uninstall-iptv.py     # package IPTVPlayer
   (password blank in profile, answered through a PTY). Samsung partner cert is NOT needed.
 - `tizen package`, not `build.py --sign`, is what produced the packages.
 
-## Current state of the app (v2, the rebuilt player)
+## Current state of the app (v2.1.0, the rebuilt player)
 
 - Package `IPTVPlayer`, app id `IPTVPlayer.App`, sideloaded and working.
 - Seven baked-in tabs: CANADA, MEXICO, SPORTS, PUBLIC, KIDS, LEARN, MUSIC (~455 channels).
@@ -103,6 +103,12 @@ python3 /mnt/c/Users/Public/uninstall-iptv.py     # package IPTVPlayer
 - Navigation: arrows move and switch lists, OK plays, BACK tags. No numbers, no colours.
 - Tagging is a three-level rating plus category moves, stored on the TV.
 - `playlists/ratings.json` ships ratings that survive a rebuild and reach other copies.
+
+- **Removed as unreachable**: the GREEN "test every channel" runner and the number-key
+  category shortcuts. Both depended on keys this TV never delivers to a web app, so they were
+  dead code that looked like a feature. Tagging is BACK only.
+- The running version is printed at the end of the hint line (`v2.1.0`), because a sideloaded
+  app otherwise gives no way to tell which build is on the TV.
 
 ## Remote input: what a Tizen 2.3 web app actually receives
 
