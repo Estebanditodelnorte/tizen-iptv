@@ -140,6 +140,40 @@ will block**. Options, in increasing risk:
   rejected on status codes and opaque replies — 3c must ignore everything except silence.
   Still the riskiest option, and only worth it if 3a/3b fail.
 
+
+### Report 4: after a long watch, BACK then UP
+
+The switch cooldown (`47e20d7`) made a large difference — the hang went from easy to reproduce
+to taking a long viewing session to appear. The remaining report: watched for a while, pressed
+**BACK**, then **UP** quickly, froze.
+
+That is a new path again: `stopPlayback()` → `cancelPending()` → `AV.stop()` + `AV.close()`,
+with an arrow key arriving straight afterwards. Arrows only repaint, so they cannot block
+anything themselves — the freeze happened inside the stop, and the UP was simply the next
+key in the queue.
+
+The unanswered question is which call blocked. The status line decides it:
+
+| Stuck on | Meaning | Next experiment |
+|---|---|---|
+| `stop:before` or `close:before` | `AV.close()` blocks on a live stream **after long playback** | C: stop without closing, keep the player for reuse |
+| `stop:after` with a later line | the stop completed and something else blocked | look at what follows |
+| `render:before` | the list rebuild | different problem entirely |
+
+#### Candidate C: stop without closing
+
+`AV.stop()` only on BACK; keep the player object and let the next `open()` reuse it. This
+removes `close()` from the routine path while the decoder is warm, which is the suspect after
+a long session. Full `close()` stays for the error path and for app teardown, where a freeze
+does less harm. Risk: a stopped-but-open player may refuse a new `open()`, so the first build
+must fall back to `close()` + retry once, and the harness must assert both branches.
+
+#### Why a longer cooldown is not the answer
+
+The cooldown already covers a gap after a stop. If `close()` itself blocks the thread, waiting
+longer changes nothing — the call still never returns. C removes the call rather than delaying
+it.
+
 ## Test protocol (so a fix cannot silently regress)
 
 1. Before any change: note 5 channels that currently work, and 3 that hang. Keep the list.
