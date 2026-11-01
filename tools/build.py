@@ -28,6 +28,32 @@ TABS = [
 # first appears". Edit this list to reorder the whole app.
 SECTION_ORDER = ['V3', 'Music', 'Kids', 'News', 'Sports', 'V2', 'Religious', '*', 'V1']
 
+CAT_PRIORITY = [s for s in SECTION_ORDER if s not in ('V3', 'V2', 'V1', '*')]
+
+HOME_CATEGORY = {'sports': 'Sports', 'kids': 'Kids', 'learn': 'Education', 'music': 'Music',
+                 'public': 'Education', 'mexico': 'General', 'canada': 'General'}
+
+def normalise_group(raw, tab=''):
+    """iptv-org writes compound categories ('Animation;Kids;Religious'). Pick the first
+    token that matches one of our sections, otherwise the first token, so the sections
+    stay clean instead of fragmenting into dozens of one-channel groups."""
+    if not raw:
+        return 'Other'
+    parts = [p.strip() for p in raw.split(';') if p.strip()]
+    if not parts:
+        return 'Other'
+    order = CAT_PRIORITY[:]
+    home = HOME_CATEGORY.get(tab)
+    if home in order:
+        order.remove(home)
+        order.insert(0, home)
+    for want in order:
+        for part in parts:
+            low = part.lower()
+            if low == want.lower() or low.startswith(want.lower() + ' '):
+                return want
+    return parts[0]
+
 def channel_name(extinf):
     """The name is after the last quoted attribute. Splitting on the first comma breaks
     entries whose attributes contain one (http-user-agent strings do)."""
@@ -37,13 +63,13 @@ def channel_name(extinf):
             return extinf[pos + 1:].split(',', 1)[-1].strip()
     return extinf.split(',', 1)[-1].strip()
 
-def parse(path):
+def parse(path, tab=''):
     channels, cur = [], {}
     for line in open(path, encoding='utf-8', errors='replace'):
         line = line.strip()
         if line.startswith('#EXTINF'):
             m = re.search(r'group-title="([^"]*)"', line)
-            cur = {'group': m.group(1) if m else '', 'name': channel_name(line)}
+            cur = {'group': normalise_group(m.group(1) if m else '', tab), 'name': channel_name(line)}
         elif line and not line.startswith('#'):
             if cur.get('name'):
                 cur['url'] = line
@@ -59,7 +85,7 @@ if os.path.exists(_ratings_path):
 data = {}
 for tab, _label in TABS:
     path = os.path.join(PLAYLISTS, tab + '.m3u')
-    data[tab] = parse(path) if os.path.exists(path) else []
+    data[tab] = parse(path, tab) if os.path.exists(path) else []
     print('%-8s %4d channels' % (tab, len(data[tab])))
 
 os.makedirs(APP, exist_ok=True)
