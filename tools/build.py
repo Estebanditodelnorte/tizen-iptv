@@ -130,6 +130,8 @@ var LABELS = __LABELS__;
 var tab = 0, CH = [], idx = 0, rows = [], playing = false, usingAv = false, listVisible = true, hideTimer = null;
 var BAD = {}, testing = false, testIdx = 0, testTimer = null;
 var connectTimer = null, pendingOpen = false;
+/* category overrides chosen on the TV: channel name -> group */
+var CAT = {}, CATS = [], catMode = false, catIdx = 0, catTarget = '', catTimer = null;
 var items = document.getElementById('items');
 var tabsEl = document.getElementById('tabs');
 var panel = document.getElementById('panel');
@@ -381,11 +383,13 @@ function openCat() {
   catIdx = 0;
   var current = CAT[catTarget] || CH[idx].group;
   for (var i = 0; i < CATS.length; i++) if (CATS[i] === current) catIdx = i;
+  if (catTimer) clearTimeout(catTimer);
+  catTimer = setTimeout(closeCat, 20000);   /* never leave the picker in the way */
   renderCat();
 }
 function renderCat() {
   var box = document.getElementById('cat');
-  var html = '<h2>' + (catTarget || '') + '</h2><div class="sub">Where should this channel go?</div>';
+  var html = '<h2>' + (catTarget || '') + '</h2><div class="sub">Where should this channel go? &nbsp; OK choose &nbsp; BACK cancel</div>';
   for (var i = 0; i < CATS.length; i++) {
     html += '<div class="cat' + (i === catIdx ? ' sel' : '') + '">' + CATS[i] + '</div>';
   }
@@ -400,6 +404,7 @@ function renderCat() {
 }
 function closeCat() {
   catMode = false;
+  if (catTimer) { clearTimeout(catTimer); catTimer = null; }
   document.getElementById('cat').style.display = 'none';
 }
 function applyCat() {
@@ -436,8 +441,8 @@ document.addEventListener('keydown', function (e) {
   }
   if (!listVisible) { showList(); e.preventDefault(); return; }
   if (k === 37 || k === 403) { tab = (tab + TABS.length - 1) % TABS.length; render(); }
-  else if (k === 406) { tab = (tab + 1) % TABS.length; render(); }
-  else if (k === 39) { openCat(); }
+  else if (k === 39) { tab = (tab + 1) % TABS.length; render(); }
+  else if (k === 406) { openCat(); }
   else if (k === 38) { idx = Math.max(0, idx - 1); paint(); }
   else if (k === 40) { idx = Math.min(CH.length - 1, idx + 1); paint(); }
   else if (k === 13 || k === 415) { startChannel(); }
