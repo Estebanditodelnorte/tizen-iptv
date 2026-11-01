@@ -16,6 +16,12 @@ They are listed here rather than re-applied, because each carries risk and the r
       tag menu froze the app; also reported "freezes after about 5 tags". A status line now
       prints the operation around each native call (`docs/PLAN-HANG.md`). **Waiting on a
       photo of the frozen line before changing any playback code.**
+- [ ] **Rapid input can wedge the decoder (leading suspect for both hangs).** Each OK press
+      schedules its own `playAv()` 200 ms later: no guard, no token. Three quick presses means
+      three overlapping `AV.open()`/`prepareAsync()` on one player object, which is not
+      re-entrant. BACK during a prepare is the mirror case (`stop`/`close` mid-flight). Fix is
+      contained: refuse OK while `pendingOpen`, restore the generation token, refuse a second
+      BACK during a stop, and ignore key repeats for OK/BACK inside ~150 ms.
 - [ ] **The stop path is uninstrumented in the fix sense.** `stopPlayback → cancelPending →
       AV.stop()/AV.close()` can block on a live stream, and no watchdog can save us because a
       native block freezes the thread. Nothing currently guards it.

@@ -37,6 +37,35 @@ run a native call that can block.
 
 Each hypothesis has a different fix, so step 1 is measuring which one it is.
 
+
+### Third report: "when I try to go too fast it hangs"
+
+This is the most diagnostic detail so far, and it reorders the hypotheses.
+
+Every OK press schedules `playAv(c)` **200 ms later**, with no token and no re-entrancy guard in
+the shipped build (the generation token was lost in the `b0b8791` restore). Press OK three times
+quickly and you get three timers, three `AV.open()` calls and three `prepareAsync()` calls into
+**one** player object. The decoder is not re-entrant: that is a textbook way to wedge it.
+
+Same shape on the other side: BACK during `prepare` runs `AV.stop()`/`AV.close()` while a prepare
+is still in flight.
+
+So the ranking becomes:
+
+1. **Re-entrancy from rapid input** (new): overlapping open/prepare/close on a single player.
+2. `AV.open()` blocking on a stream the decoder refuses.
+3. Player left in a dirty state between channels.
+4. Memory pressure.
+
+The fix for (1) is small, contained, and testable without a TV:
+
+- ignore OK while `pendingOpen` is true, or cancel the pending open cleanly first;
+- restore the generation token, so only the newest scheduled open can run;
+- ignore a second BACK while a stop is already in progress;
+- optionally drop key repeats inside a short window (e.g. 150 ms) for OK and BACK only.
+
+Arrows need no guard: they only repaint.
+
 ## Step 1 — diagnostics only, zero behaviour change
 
 Add an on-screen diagnostic panel (toggle with a key that already arrives, e.g. **BACK held on
