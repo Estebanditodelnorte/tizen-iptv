@@ -5,7 +5,7 @@ A small IPTV player for **Tizen TVs**, built because the official apps on a 2015
 given a playlist.
 
 The whole channel list is **baked into the app**. There is no server, no account, and the TV
-never has to fetch a playlist â€” which matters, because an old Tizen set is bad at exactly that.
+never has to fetch a playlist — which matters, because an old Tizen set is bad at exactly that.
 
 ## What it does
 
@@ -15,7 +15,7 @@ never has to fetch a playlist â€” which matters, because an old Tizen set i
 - **GREEN** tests every channel in the current tab and marks the ones the TV cannot play.
 - The list sits on the left and the video on the right; the list auto-hides 4 s into playback
   and comes back on any key.
-- Playback goes through Samsung's **AVPlay** â€” the hardware decoder â€” not the browser's
+- Playback goes through Samsung's **AVPlay** — the hardware decoder — not the browser's
   `<video>` element.
 
 ## Install on the TV
@@ -40,7 +40,7 @@ Signing is not optional: a retail TV only installs widgets signed for that TV.
 
 Public IPTV lists rot constantly. There are two tests, and they answer different questions.
 
-**1. On the TV â€” press GREEN.** The app walks every channel in the current tab, opens it, and
+**1. On the TV — press GREEN.** The app walks every channel in the current tab, opens it, and
 waits for the decoder to accept it (9 s each). Failures are marked **âœ—**, dimmed, and remembered
 in `localStorage`, so they stay marked after a restart. Pressing GREEN during a run stops it.
 This is the only test that reflects what your TV can actually decode.
@@ -48,7 +48,7 @@ This is the only test that reflects what your TV can actually decode.
 Expect it to take a while: roughly 10 s per channel, so ~20 minutes for a 107-channel tab and
 over an hour for KIDS (311). Run it per tab, not all at once.
 
-**2. On a computer â€” `tools/deep_probe.py`.** Follows the HLS chain instead of trusting the
+**2. On a computer — `tools/deep_probe.py`.** Follows the HLS chain instead of trusting the
 first URL: master playlist â†’ lowest-bandwidth variant â†’ first segment, rejecting provider DRM
 (`EXT-X-KEY`), missing segments, and segments that are not real media (MPEG-TS `0x47` sync byte
 or an `ftyp` box). It writes a CSV with a reason per channel plus a cleaned playlist.
@@ -59,7 +59,7 @@ python3 tools/deep_probe.py playlists/canada.m3u report-canada.csv
 python3 tools/build.py
 ```
 
-A pass on the computer is not proof (codecs are the TV's call), but a **fail is definite** â€” so
+A pass on the computer is not proof (codecs are the TV's call), but a **fail is definite** — so
 run it first, then spend TV time only on what survives.
 
 ## Refresh the playlists
@@ -122,7 +122,7 @@ music channels whose only audio is not speech.
 ## Credits
 
 - Channel data: [iptv-org](https://github.com/iptv-org/iptv) (public domain).
-- The AVPlay surface technique â€” the `<object>` element and the transparency requirement â€” is
+- The AVPlay surface technique — the `<object>` element and the transparency requirement — is
   documented in [shayanline/OpenIPTV](https://github.com/shayanline/OpenIPTV)
   (`src/services/player.ts`, MIT). That project targets Tizen 5.5+; this one is aimed at
   Tizen 2.3, where the same rules apply.
