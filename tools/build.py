@@ -117,7 +117,7 @@ template = r'''<!DOCTYPE html>
         style="position:absolute;top:0;left:0;width:1920px;height:1080px;background:transparent;pointer-events:none;"></object>
 <div id="panel">
   <div id="tabs"></div>
-  <div id="tips">RED / BLUE switch list &nbsp;|&nbsp; RIGHT change category &nbsp;|&nbsp; GREEN test</div>
+  <div id="tips">&larr; &rarr; switch list &nbsp;|&nbsp; <b>1</b> News <b>2</b> Sports <b>3</b> Kids <b>4</b> Music <b>5</b> Movies <b>6</b> Doc <b>7</b> Ent <b>8</b> Rel <b>9</b> Weather <b>0</b> Other &nbsp;|&nbsp; GREEN test</div>
   <div id="items"></div>
 </div>
 <div id="idle">Choose a channel on the left<br><br>&uarr; &darr; move &nbsp; LEFT/RIGHT switch list &nbsp; OK play</div>
@@ -153,7 +153,7 @@ function buildTabs() {
     tabsEl.appendChild(t);
   }
 }
-function render() {
+function render(keepIdx) {
   var src = SOURCES[TABS[tab]] || [];
   BAD = loadBad();
   var normal = [], broken = [];
@@ -162,7 +162,9 @@ function render() {
   }
   /* channels that failed to play sink to a BROKEN section at the end */
   CH = normal.concat(broken);
-  idx = 0; rows = []; items.innerHTML = ''; painted = -1;
+  if (!keepIdx) idx = 0;
+  if (idx >= CH.length) idx = Math.max(0, CH.length - 1);
+  rows = []; items.innerHTML = ''; painted = -1;
   var lastGroup = null;
   for (var i = 0; i < CH.length; i++) {
     var gname = (i >= normal.length)
@@ -369,6 +371,21 @@ function testStep() {
   }
 }
 
+/* Number keys assign a category straight onto the highlighted channel - no menu, because the
+   colour keys on some remotes never reach a web app. 1..9 and 0. */
+var NUMCATS = {
+  49: 'News', 50: 'Sports', 51: 'Kids', 52: 'Music', 53: 'Movies',
+  54: 'Documentary', 55: 'Entertainment', 56: 'Religious', 57: 'Weather', 48: 'Other'
+};
+function assignCat(cat) {
+  if (!CH[idx]) return;
+  var name = CH[idx].name;
+  CAT[name] = cat;
+  saveCat();
+  render(true);
+  hintEl.textContent = name + '  \u2192  ' + cat;
+}
+
 function loadCat() {
   try { return JSON.parse(localStorage.getItem('iptv-cat') || '{}'); } catch (e) { return {}; }
 }
@@ -460,6 +477,7 @@ document.addEventListener('keydown', function (e) {
   else if (k === 38) { idx = Math.max(0, idx - 1); paint(); }
   else if (k === 40) { idx = Math.min(CH.length - 1, idx + 1); paint(); }
   else if (k === 13 || k === 415) { startChannel(); }
+  else if (k >= 48 && k <= 57) { assignCat(NUMCATS[k]); }
   else if (k === 404) { startTest(); }
   else if (k === 10009 || k === 27 || k === 8) { stopPlayback(); }
   else { handled = false; }

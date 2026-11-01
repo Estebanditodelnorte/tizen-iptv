@@ -51,7 +51,7 @@ vm.runInContext(code, sandbox, { filename: 'app.js' });
 
 if (!keyHandler) { console.log('FAIL: no keydown handler registered'); process.exit(1); }
 
-const presses = [40, 40, 38, 39, 37, 406, 40, 40, 13, 10009, 406, 10009, 404];
+const presses = [40, 40, 51, 38, 39, 37, 406, 40, 40, 13, 10009, 406, 10009, 404];
 let failures = 0;
 for (const keyCode of presses) {
   try {
@@ -63,4 +63,11 @@ for (const keyCode of presses) {
 }
 console.log(failures === 0 ? 'all ' + presses.length + ' keypresses handled without throwing'
                            : failures + ' keypresses threw');
-process.exit(failures === 0 ? 0 : 1);
+
+// pressing '3' should have stored a Kids mapping for the highlighted channel
+const saved = store['iptv-cat'] ? JSON.parse(store['iptv-cat']) : {};
+const values = Object.values(saved);
+const assigned = values.indexOf('Kids') !== -1;
+console.log(assigned ? 'digit key assigned a category (' + JSON.stringify(saved) + ')'
+                     : 'FAIL: digit key stored nothing');
+process.exit(failures === 0 && assigned ? 0 : 1);
