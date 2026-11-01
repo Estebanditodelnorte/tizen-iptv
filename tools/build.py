@@ -26,9 +26,32 @@ TABS = [
 # Order of the sections inside every tab. V3 / V2 / V1 are the ratings given on the TV;
 # any other name is a category, and '*' means "every remaining category, in the order it
 # first appears". Edit this list to reorder the whole app.
-SECTION_ORDER = ['V3', 'Music', 'Kids', 'News', 'Sports', 'V2', 'Religious', '*', 'V1']
+SECTION_ORDER = ['V3', 'Music', 'Kids', 'News', 'Sports', 'V2', 'Religious', '*', 'FRAGILE', 'V1']
 
-CAT_PRIORITY = [s for s in SECTION_ORDER if s not in ('V3', 'V2', 'V1', '*')]
+import fnmatch
+
+def load_fragile_hosts():
+    """Hosts measured as unreliable on this TV (ad-stitching, geo-locks). Sorted, never deleted."""
+    path = os.path.join(ROOT, 'tools', 'fragile_hosts.txt')
+    pats = []
+    if os.path.exists(path):
+        for line in open(path, encoding='utf-8'):
+            line = line.strip()
+            if line and not line.startswith('#'):
+                pats.append(line.lower())
+    return pats
+
+FRAGILE_HOSTS = load_fragile_hosts()
+
+def is_fragile(url):
+    try:
+        host = (url.split('//', 1)[1].split('/', 1)[0].split('?', 1)[0]).lower()
+    except IndexError:
+        return False
+    host = host.split(':', 1)[0]
+    return any(fnmatch.fnmatch(host, pat) for pat in FRAGILE_HOSTS)
+
+CAT_PRIORITY = [s for s in SECTION_ORDER if s not in ('V3', 'V2', 'V1', '*', 'FRAGILE')]
 
 HOME_CATEGORY = {'sports': 'Sports', 'kids': 'Kids', 'learn': 'Education', 'music': 'Music',
                  'public': 'Education', 'mexico': 'General', 'canada': 'General'}
@@ -73,6 +96,8 @@ def parse(path, tab=''):
         elif line and not line.startswith('#'):
             if cur.get('name'):
                 cur['url'] = line
+                if is_fragile(line):
+                    cur['fragile'] = 1
                 channels.append(cur)
             cur = {}
     return channels
@@ -200,7 +225,7 @@ function render(keepIdx) {
     if (r === 3) key = 'V3';
     else if (r === 2) key = 'V2';
     else if (r === 1) key = 'V1';
-    else key = CAT[nm] || src[i].group || 'Other';
+    else key = CAT[nm] || (src[i].fragile ? 'FRAGILE' : (src[i].group || 'Other'));
     if (!buckets[key]) { buckets[key] = []; }
     buckets[key].push(src[i]);
   }
@@ -227,7 +252,9 @@ function render(keepIdx) {
   for (var j2 = 0; j2 < keys.length; j2++) {
     var label = keys[j2] === 'V3' ? '\u2605\u2605 VERY GOOD'
               : keys[j2] === 'V2' ? '\u2605 GOOD'
-              : keys[j2] === 'V1' ? '\u2717 BAD' : keys[j2];
+              : keys[j2] === 'V1' ? '\u2717 BAD'
+              : keys[j2] === 'FRAGILE' ? '\u26a0 LIKELY BAD \u2014 ad-stitched or geo-locked'
+              : keys[j2];
     var g = document.createElement('div');
     g.className = 'grp';
     g.textContent = label;

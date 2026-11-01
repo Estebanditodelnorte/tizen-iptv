@@ -186,12 +186,18 @@ another probe.
 ## Ordering and tagging model
 
 - `SECTION_ORDER` in `tools/build.py` is the whole layout, in one line:
-  `['V3', 'Music', 'Kids', 'News', 'Sports', 'V2', 'Religious', '*', 'V1']`.
+  `['V3', 'Music', 'Kids', 'News', 'Sports', 'V2', 'Religious', '*', 'FRAGILE', 'V1']`.
   `V3/V2/V1` are the ratings; `*` expands to the remaining categories in first-appearance
   order.
 - iptv-org writes **compound categories** (`Animation;Kids;Religious`). Each entry collapses
   to the first token matching a known section, and inside a tab that tab's own category wins
   (so `Kids;Sports` in SPORTS files under Sports).
+- `FRAGILE` is the **LIKELY BAD** section: channels whose host matches
+  `tools/fragile_hosts.txt` are sorted there (just above BAD) instead of being deleted. They
+  are still playable — several are — so the user can rate one up and it leaves the section.
+  Measured 39 of 456 channels when the list was written: MEXICO 6, SPORTS 21, PUBLIC 2,
+  KIDS 9, CANADA 1. Nothing is removed on a host guess alone.
+
 - Ratings live in the TV's `localStorage`. **There is no way to read them remotely**: SDB
   only installs/uninstalls/launches, app data is sandboxed, and the TV cannot reach a server
   on the laptop. The working sync is: the user photographs the list, the ratings are written
