@@ -117,7 +117,7 @@ template = r'''<!DOCTYPE html>
         style="position:absolute;top:0;left:0;width:1920px;height:1080px;background:transparent;pointer-events:none;"></object>
 <div id="panel">
   <div id="tabs"></div>
-  <div id="tips">&larr; &rarr; switch list &nbsp;|&nbsp; <b>1</b> News <b>2</b> Sports <b>3</b> Kids <b>4</b> Music <b>5</b> Movies <b>6</b> Doc <b>7</b> Ent <b>8</b> Rel <b>9</b> Weather <b>0</b> Other &nbsp;|&nbsp; GREEN test</div>
+  <div id="tips">&uarr;&darr; move (wrap = next list) &nbsp;|&nbsp; <b>&larr;</b> star favourite &nbsp;|&nbsp; <b>&rarr;</b> mark broken &nbsp;|&nbsp; OK play</div>
   <div id="items"></div>
 </div>
 <div id="idle">Choose a channel on the left<br><br>&uarr; &darr; move &nbsp; LEFT/RIGHT switch list &nbsp; OK play</div>
@@ -132,6 +132,7 @@ var BAD = {}, testing = false, testIdx = 0, testTimer = null;
 var connectTimer = null, pendingOpen = false;
 /* category overrides chosen on the TV: channel name -> group */
 var CAT = {}, CATS = [], catMode = false, catIdx = 0, catTarget = '', catTimer = null;
+var FAV = {};
 var items = document.getElementById('items');
 var tabsEl = document.getElementById('tabs');
 var panel = document.getElementById('panel');
@@ -156,20 +157,26 @@ function buildTabs() {
 function render(keepIdx) {
   var src = SOURCES[TABS[tab]] || [];
   BAD = loadBad();
-  var normal = [], broken = [];
+  FAV = loadFav();
+  var fav = [], normal = [], broken = [];
   for (var i = 0; i < src.length; i++) {
-    if (BAD[src[i].name]) broken.push(src[i]); else normal.push(src[i]);
+    var n = src[i].name;
+    if (BAD[n]) broken.push(src[i]);
+    else if (FAV[n]) fav.push(src[i]);
+    else normal.push(src[i]);
   }
-  /* channels that failed to play sink to a BROKEN section at the end */
-  CH = normal.concat(broken);
+  CH = fav.concat(normal, broken);
+  var favCount = fav.length;
+  var brokenStart = fav.length + normal.length;
   if (!keepIdx) idx = 0;
   if (idx >= CH.length) idx = Math.max(0, CH.length - 1);
   rows = []; items.innerHTML = ''; painted = -1;
   var lastGroup = null;
   for (var i = 0; i < CH.length; i++) {
-    var gname = (i >= normal.length)
-      ? 'BROKEN \u2014 did not play'
-      : (CAT[CH[i].name] || CH[i].group);
+    var gname;
+    if (i < favCount) gname = '\u2605 FAVOURITES';
+    else if (i >= brokenStart) gname = 'BROKEN \u2014 not playing';
+    else gname = (CAT[CH[i].name] || CH[i].group);
     if (gname !== lastGroup) {
       lastGroup = gname;
       var g = document.createElement('div');
@@ -386,6 +393,35 @@ function assignCat(cat) {
   hintEl.textContent = name + '  \u2192  ' + cat;
 }
 
+function loadFav() {
+  try { return JSON.parse(localStorage.getItem('iptv-fav') || '{}'); } catch (e) { return {}; }
+}
+function saveFav() {
+  try { localStorage.setItem('iptv-fav', JSON.stringify(FAV)); } catch (e) {}
+}
+/* The remote only delivers arrows, OK and BACK to a web app on this firmware (numbers and
+   colour keys are swallowed by the platform), so tagging uses LEFT and RIGHT:
+   LEFT stars a channel into FAVOURITES at the top, RIGHT flags it BROKEN at the bottom. */
+function focusName(name) {
+  for (var i = 0; i < CH.length; i++) {
+    if (CH[i].name === name) { idx = i; paint(); return; }
+  }
+}
+function toggleFav() {
+  if (!CH[idx]) return;
+  var name = CH[idx].name;
+  if (FAV[name]) { delete FAV[name]; hintEl.textContent = name + '  un-starred'; }
+  else { FAV[name] = 1; delete BAD[name]; saveBad(BAD); hintEl.textContent = name + '  \u2605 favourite'; }
+  saveFav(); render(true); focusName(name);
+}
+function toggleBad() {
+  if (!CH[idx]) return;
+  var name = CH[idx].name;
+  if (BAD[name]) { delete BAD[name]; hintEl.textContent = name + '  marked working'; }
+  else { BAD[name] = 1; delete FAV[name]; saveFav(); hintEl.textContent = name + '  marked broken'; }
+  saveBad(BAD); render(true); focusName(name);
+}
+
 function loadCat() {
   try { return JSON.parse(localStorage.getItem('iptv-cat') || '{}'); } catch (e) { return {}; }
 }
@@ -471,11 +507,16 @@ document.addEventListener('keydown', function (e) {
     return;
   }
   if (!listVisible) { showList(); e.preventDefault(); return; }
-  if (k === 37 || k === 403) { tab = (tab + TABS.length - 1) % TABS.length; render(); }
-  else if (k === 39) { tab = (tab + 1) % TABS.length; render(); }
-  else if (k === 406) { openCat(); }
-  else if (k === 38) { idx = Math.max(0, idx - 1); paint(); }
-  else if (k === 40) { idx = Math.min(CH.length - 1, idx + 1); paint(); }
+  if (k === 37) { toggleFav(); }
+  else if (k === 39) { toggleBad(); }
+  else if (k === 38) {
+    if (idx === 0) { tab = (tab + TABS.length - 1) % TABS.length; render(); }
+    else { idx--; paint(); }
+  }
+  else if (k === 40) {
+    if (idx >= CH.length - 1) { tab = (tab + 1) % TABS.length; render(); }
+    else { idx++; paint(); }
+  }
   else if (k === 13 || k === 415) { startChannel(); }
   else if (k >= 48 && k <= 57) { assignCat(NUMCATS[k]); }
   else if (k === 404) { startTest(); }

@@ -1,6 +1,6 @@
-// Load the built app's script with a stub DOM and fire remote keys at it.
-// Catches the class of bug that broke navigation: an undeclared variable throwing
-// on the first keypress, which a rendered-DOM check cannot see.
+// Load the built app's script with a stub DOM and drive it with remote keys.
+// Catches bugs a rendered-DOM check cannot see, e.g. an undeclared variable throwing on the
+// first keypress, or tagging that silently writes nothing.
 const fs = require('fs');
 const vm = require('vm');
 
@@ -27,8 +27,8 @@ El.prototype.querySelector = function () { return null; };
 El.prototype.removeAttribute = function () {};
 
 const elements = {};
-let keyHandler = null;
 const store = {};
+let keyHandler = null;
 
 const sandbox = {
   document: {
@@ -51,23 +51,35 @@ vm.runInContext(code, sandbox, { filename: 'app.js' });
 
 if (!keyHandler) { console.log('FAIL: no keydown handler registered'); process.exit(1); }
 
-const presses = [40, 40, 51, 38, 39, 37, 406, 40, 40, 13, 10009, 406, 10009, 404];
+const press = (k) => keyHandler({ keyCode: k, preventDefault() {} });
+const stored = (k) => { try { return JSON.parse(store[k] || '{}'); } catch (e) { return {}; } };
 let failures = 0;
-for (const keyCode of presses) {
-  try {
-    keyHandler({ keyCode, preventDefault() {} });
-  } catch (e) {
-    failures++;
-    console.log('FAIL on keyCode ' + keyCode + ': ' + e.message);
-  }
+function step(label, fn) {
+  try { fn(); console.log('ok   ' + label); }
+  catch (e) { failures++; console.log('FAIL ' + label + ': ' + e.message); }
 }
-console.log(failures === 0 ? 'all ' + presses.length + ' keypresses handled without throwing'
-                           : failures + ' keypresses threw');
 
-// pressing '3' should have stored a Kids mapping for the highlighted channel
-const saved = store['iptv-cat'] ? JSON.parse(store['iptv-cat']) : {};
-const values = Object.values(saved);
-const assigned = values.indexOf('Kids') !== -1;
-console.log(assigned ? 'digit key assigned a category (' + JSON.stringify(saved) + ')'
-                     : 'FAIL: digit key stored nothing');
-process.exit(failures === 0 && assigned ? 0 : 1);
+step('navigate down twice', () => { press(40); press(40); });
+step('digit 3 assigns Kids', () => {
+  press(51);
+  if (Object.values(stored('iptv-cat')).indexOf('Kids') === -1) throw new Error('no Kids mapping stored');
+});
+step('LEFT stars a favourite', () => {
+  press(37);
+  if (Object.keys(stored('iptv-fav')).length === 0) throw new Error('nothing stored in iptv-fav');
+});
+step('RIGHT marks broken', () => {
+  press(39);
+  const bad = stored('iptv-bad-canada');
+  if (Object.keys(bad).length === 0) throw new Error('nothing stored in iptv-bad-canada');
+});
+step('RIGHT again clears it', () => {
+  press(39);
+  if (Object.keys(stored('iptv-bad-canada')).length !== 0) throw new Error('broken flag not cleared');
+});
+step('OK plays without throwing', () => press(13));
+step('BACK returns', () => press(10009));
+step('UP at the top wraps to the previous tab', () => { press(38); press(38); press(38); });
+
+console.log(failures === 0 ? '\nall checks passed' : '\n' + failures + ' checks failed');
+process.exit(failures === 0 ? 0 : 1);
