@@ -8,8 +8,6 @@ web app (see README). No network access, no dependencies beyond Python 3.
 """
 import json, os, re, shutil
 
-VERSION = '2.1.0'
-
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PLAYLISTS = os.path.join(ROOT, 'playlists')
 APP = os.path.join(ROOT, 'app')
@@ -122,7 +120,7 @@ for stale in ('index.html', 'config.xml'):
         os.remove(p)
 
 config = '''<?xml version="1.0" encoding="UTF-8"?>
-<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://example.com/iptv" version="__VERSION__" viewmodes="maximized">
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://example.com/iptv" version="1.0.0" viewmodes="maximized">
     <tizen:application id="IPTVPlayer.App" package="IPTVPlayer" required_version="2.3"/>
     <name>IPTV</name>
     <content src="index.html"/>
@@ -134,7 +132,6 @@ config = '''<?xml version="1.0" encoding="UTF-8"?>
     <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
 </widget>
 '''
-config = config.replace('__VERSION__', VERSION)
 open(os.path.join(APP, 'config.xml'), 'w', encoding='utf-8').write(config)
 
 template = r'''<!DOCTYPE html>
@@ -181,7 +178,7 @@ template = r'''<!DOCTYPE html>
         style="position:absolute;top:0;left:0;width:1920px;height:1080px;background:transparent;pointer-events:none;"></object>
 <div id="panel">
   <div id="tabs"></div>
-  <div id="tips">&larr; &rarr; lists &nbsp;|&nbsp; &uarr;&darr; move &nbsp;|&nbsp; OK play &nbsp;|&nbsp; <b>BACK</b> tag this channel &nbsp;&nbsp; v__VERSION__</div>
+  <div id="tips">&larr; &rarr; lists &nbsp;|&nbsp; &uarr;&darr; move &nbsp;|&nbsp; OK play &nbsp;|&nbsp; <b>BACK</b> tag this channel &nbsp;|&nbsp; GREEN test</div>
   <div id="items"></div>
 </div>
 <div id="idle">Choose a channel on the left<br><br>&uarr; &darr; move &nbsp; LEFT/RIGHT switch list &nbsp; OK play</div>
@@ -194,10 +191,10 @@ var LABELS = __LABELS__;
 var SECTION_ORDER = __ORDER__;
 var DEFAULT_RATE = __RATES__;
 var tab = 0, CH = [], idx = 0, rows = [], playing = false, usingAv = false, listVisible = true, hideTimer = null;
-var RATE = {};
-var connectTimer = null, pendingOpen = false, openGen = 0;
+var RATE = {}, testing = false, testIdx = 0, testTimer = null;
+var connectTimer = null, pendingOpen = false;
 /* category overrides chosen on the TV: channel name -> group */
-var CAT = {}, CATS = [];
+var CAT = {}, CATS = [], catMode = false, catIdx = 0, catTarget = '', catTimer = null;
 var items = document.getElementById('items');
 var tabsEl = document.getElementById('tabs');
 var panel = document.getElementById('panel');
@@ -402,13 +399,8 @@ function startChannel() {
   nowEl.textContent = c.name;
   hintEl.textContent = 'BACK stop';
   msg.textContent = 'Connecting...';
-  /* let the previous teardown settle before opening the next one; the token stops a
-     stale open from landing after the user has already chosen something else */
-  var myGen = ++openGen;
-  setTimeout(function () {
-    if (myGen !== openGen) return;
-    playAv(c);
-  }, 200);
+  /* let the previous teardown settle before opening the next one */
+  setTimeout(function () { playAv(c); }, 200);
   if (hideTimer) clearTimeout(hideTimer);
   hideTimer = setTimeout(hideList, 4000);
 }
@@ -418,24 +410,13 @@ function startChannel() {
 function loadRate() {
   var r = {}, k;
   for (k in DEFAULT_RATE) r[k] = DEFAULT_RATE[k];      /* baked in from playlists/ratings.json */
-  function read(key) {
-    try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; }
-  }
-  var main = read('iptv-rate');
-  var bak = read('iptv-rate-bak');
-  var s = main || bak;
-  if (s) {
-    for (k in s) { if (s[k] === 0) delete r[k]; else r[k] = s[k]; }
-    /* the two copies guard each other: a truncated write loses one, not both */
-    var other = (main && bak) ? (s === main ? bak : main) : null;
-    if (other) {
-      for (k in other) {
-        if (!(k in s)) { if (other[k] === 0) delete r[k]; else r[k] = other[k]; }
-      }
-    }
-    return r;
-  }
   try {
+    var raw = localStorage.getItem('iptv-rate');
+    if (raw) {
+      var s = JSON.parse(raw);
+      for (k in s) { if (s[k] === 0) delete r[k]; else r[k] = s[k]; }
+      return r;
+    }
     var f = JSON.parse(localStorage.getItem('iptv-fav') || '{}');
     for (k in f) r[k] = 3;
     var b = JSON.parse(localStorage.getItem('iptv-bad-' + TABS[tab]) || '{}');
@@ -444,16 +425,67 @@ function loadRate() {
   return r;
 }
 function saveRate() {
-  var s = JSON.stringify(RATE);
-  try {
-    localStorage.setItem('iptv-rate', s);
-    localStorage.setItem('iptv-rate-bak', s);   /* second copy, read back on load */
-  } catch (e) {}
+  try { localStorage.setItem('iptv-rate', JSON.stringify(RATE)); } catch (e) {}
 }
 function markBad(name) {
   RATE[name] = 1;
   saveRate();
 }
+/* Walk every channel in the current tab, open it, and record whether the decoder accepts it.
+   This is the only test that reflects what the TV can actually play. */
+function startTest() {
+  if (testing) return;
+  if (playing) stopPlayback();
+  testing = true; testIdx = 0;
+  testStep();
+}
+function testStep() {
+  if (testIdx >= CH.length) {
+    testing = false;
+    nowEl.textContent = ''; msg.textContent = ''; hintEl.textContent = '';
+    render();
+    return;
+  }
+  var c = CH[testIdx];
+  nowEl.textContent = 'TESTING ' + (testIdx + 1) + ' / ' + CH.length;
+  hintEl.textContent = c.name + '  \u2014  GREEN to stop';
+  var done = false;
+  function finish(ok, reason) {
+    if (done) return;
+    done = true;
+    if (testTimer) { clearTimeout(testTimer); testTimer = null; }
+    if (usingAv && AV) { try { AV.stop(); } catch (e) {} try { AV.close(); } catch (e) {} usingAv = false; }
+    if (!ok) markBad(c.name, reason);
+    testIdx++;
+    setTimeout(testStep, 250);
+  }
+  testTimer = setTimeout(function () { finish(false, 'timeout'); }, 9000);
+  try {
+    usingAv = true;
+    AV.open(c.url);
+    AV.setListener({ onerror: function (e) { finish(false, (e && e.name) || 'error'); } });
+    AV.prepareAsync(function () { finish(true); },
+                    function (e) { finish(false, (e && e.name) || 'prepare_failed'); });
+  } catch (e) {
+    finish(false, 'open_failed');
+  }
+}
+
+/* Number keys assign a category straight onto the highlighted channel - no menu, because the
+   colour keys on some remotes never reach a web app. 1..9 and 0. */
+var NUMCATS = {
+  49: 'News', 50: 'Sports', 51: 'Kids', 52: 'Music', 53: 'Movies',
+  54: 'Documentary', 55: 'Entertainment', 56: 'Religious', 57: 'Weather', 48: 'Other'
+};
+function assignCat(cat) {
+  if (!CH[idx]) return;
+  var name = CH[idx].name;
+  CAT[name] = cat;
+  saveCat();
+  render(true);
+  hintEl.textContent = name + '  \u2192  ' + cat;
+}
+
 function focusName(name) {
   for (var i = 0; i < CH.length; i++) {
     if (CH[i].name === name) { idx = i; paint(); return; }
@@ -547,6 +579,46 @@ function buildCats() {
   for (var k in seen) CATS.push(k);
   CATS.sort();
 }
+/* RIGHT on a channel opens this: pick a category and the channel moves there for good. */
+function openCat() {
+  if (!CH[idx]) return;
+  catTarget = CH[idx].name;
+  catMode = true;
+  catIdx = 0;
+  var current = CAT[catTarget] || CH[idx].group;
+  for (var i = 0; i < CATS.length; i++) if (CATS[i] === current) catIdx = i;
+  if (catTimer) clearTimeout(catTimer);
+  catTimer = setTimeout(closeCat, 20000);   /* never leave the picker in the way */
+  renderCat();
+}
+function renderCat() {
+  var box = document.getElementById('cat');
+  var html = '<h2>' + (catTarget || '') + '</h2><div class="sub">Where should this channel go? &nbsp; OK choose &nbsp; BACK cancel</div>';
+  for (var i = 0; i < CATS.length; i++) {
+    html += '<div class="cat' + (i === catIdx ? ' sel' : '') + '">' + CATS[i] + '</div>';
+  }
+  box.innerHTML = html;
+  box.style.display = 'block';
+  var sel = box.querySelector('.cat.sel');
+  if (sel && sel.scrollIntoView) {
+    var top = sel.offsetTop, st = box.scrollTop, ch = box.clientHeight;
+    if (top < st) box.scrollTop = top - 8;
+    else if (top + sel.offsetHeight > st + ch) box.scrollTop = top + sel.offsetHeight - ch + 8;
+  }
+}
+function closeCat() {
+  catMode = false;
+  if (catTimer) { clearTimeout(catTimer); catTimer = null; }
+  document.getElementById('cat').style.display = 'none';
+}
+function applyCat() {
+  CAT[catTarget] = CATS[catIdx];
+  saveCat();
+  closeCat();
+  render();
+  hintEl.textContent = catTarget + ' -> ' + CATS[catIdx];
+}
+
 document.addEventListener('keydown', function (e) {
   var k = e.keyCode, handled = true;
   if (actMode) {
@@ -558,12 +630,36 @@ document.addEventListener('keydown', function (e) {
     e.preventDefault();
     return;
   }
+  if (catMode) {
+    if (k === 38) { catIdx = Math.max(0, catIdx - 1); renderCat(); }
+    else if (k === 40) { catIdx = Math.min(CATS.length - 1, catIdx + 1); renderCat(); }
+    else if (k === 13 || k === 415) { applyCat(); }
+    else if (k === 10009 || k === 27 || k === 8) { closeCat(); }
+    else { handled = false; }
+    e.preventDefault();
+    return;
+  }
+  if (testing) {
+    if (k === 404) {
+      testing = false;
+      if (testTimer) { clearTimeout(testTimer); testTimer = null; }
+      try { AV.stop(); } catch (x) {}
+      try { AV.close(); } catch (x) {}
+      usingAv = false;
+      nowEl.textContent = ''; hintEl.textContent = '';
+      render();
+    }
+    e.preventDefault();
+    return;
+  }
   if (!listVisible) { showList(); e.preventDefault(); return; }
   if (k === 37) { tab = (tab + TABS.length - 1) % TABS.length; render(); }
   else if (k === 39) { tab = (tab + 1) % TABS.length; render(); }
   else if (k === 38) { idx = Math.max(0, idx - 1); paint(); }
   else if (k === 40) { idx = Math.min(CH.length - 1, idx + 1); paint(); }
   else if (k === 13 || k === 415) { startChannel(); }
+  else if (k >= 48 && k <= 57) { assignCat(NUMCATS[k]); }
+  else if (k === 404) { startTest(); }
   else if (k === 10009 || k === 27 || k === 8) {
     if (playing) stopPlayback(); else openActions();
   }
@@ -584,8 +680,7 @@ html = (template
         .replace('__TABS__', json.dumps(ids))
         .replace('__LABELS__', json.dumps(labels))
         .replace('__ORDER__', json.dumps(SECTION_ORDER))
-        .replace('__RATES__', json.dumps(ratings))
-        .replace('__VERSION__', VERSION))
+        .replace('__RATES__', json.dumps(ratings)))
 open(os.path.join(APP, 'index.html'), 'w', encoding='utf-8').write(html)
 
 total = sum(len(v) for v in data.values())
