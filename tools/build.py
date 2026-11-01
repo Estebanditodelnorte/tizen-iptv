@@ -23,13 +23,22 @@ TABS = [
     ('music', 'MUSIC'),
 ]
 
+def channel_name(extinf):
+    """The name is after the last quoted attribute. Splitting on the first comma breaks
+    entries whose attributes contain one (http-user-agent strings do)."""
+    if '"' in extinf:
+        pos = extinf.rfind('"')
+        if ',' in extinf[pos:]:
+            return extinf[pos + 1:].split(',', 1)[-1].strip()
+    return extinf.split(',', 1)[-1].strip()
+
 def parse(path):
     channels, cur = [], {}
     for line in open(path, encoding='utf-8', errors='replace'):
         line = line.strip()
         if line.startswith('#EXTINF'):
             m = re.search(r'group-title="([^"]*)"', line)
-            cur = {'group': m.group(1) if m else '', 'name': line.split(',', 1)[-1].strip()}
+            cur = {'group': m.group(1) if m else '', 'name': channel_name(line)}
         elif line and not line.startswith('#'):
             if cur.get('name'):
                 cur['url'] = line
