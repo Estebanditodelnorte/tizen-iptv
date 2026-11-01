@@ -168,6 +168,7 @@ console.log(failures === 0 ? '\nall checks passed' : '\n' + failures + ' checks 
   //    (this is the o2 / s0 case that hung on the TV: no BACK was ever pressed)
   fake.fail = false;                     // first channel is genuinely playing
   await wait(1500);                      // let any pending cooldown expire
+  const closesBefore = fake.closes;
   press(13);
   await wait(700);                       // opens and prepares successfully
   fake.opens = 0;
@@ -181,6 +182,8 @@ console.log(failures === 0 ? '\nall checks passed' : '\n' + failures + ' checks 
   else { console.log('FAIL switch opened immediately (' + duringSwitch + ')'); failures++; }
   if (afterSwitch === 1) console.log('ok   switched channel opened once');
   else { console.log('FAIL switch opened ' + afterSwitch + ' times'); failures++; }
+  if (fake.closes === closesBefore) console.log('ok   switching does not close the player');
+  else { console.log('FAIL switch closed the player ' + (fake.closes - closesBefore) + ' times'); failures++; }
 
   // 3. stop, then press OK immediately: the open must be deferred, not dropped
   press(10009);

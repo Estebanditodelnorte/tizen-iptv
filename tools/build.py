@@ -353,13 +353,21 @@ function stopPlayback() {
 function cancelPending() {
   if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; }
   pendingOpen = false;
+  /* Stop, do not close. The decoder survives far more stops than close/open cycles, and a
+     crash after a long session (o16 s6) points at that churn rather than at the stream. */
   if (AV) {
-    log('close:before');
+    log('stop:before');
     try { AV.stop(); } catch (e) {}
-    try { AV.close(); } catch (e) {}
-    log('close:after');
+    log('stop:after');
   }
   usingAv = false;
+}
+function hardClose() {
+  if (!AV) return;
+  log('close:before');
+  try { AV.stop(); } catch (e) {}
+  try { AV.close(); } catch (e) {}
+  log('close:after');
 }
 function playAv(c) {
   cancelPending();
@@ -386,7 +394,14 @@ function playAv(c) {
   }
   try {
     log('AV.open:before');
-    AV.open(c.url);
+    try {
+      AV.open(c.url);
+    } catch (openErr) {
+      /* a stopped-but-open player may refuse a new source: close it and try once */
+      log('open-retry');
+      hardClose();
+      AV.open(c.url);
+    }
     log('AV.open:after');
     applyRect();
     AV.setListener({
@@ -414,7 +429,7 @@ function playAv(c) {
       settled();
       markBad(c.name, (e && e.name) || 'prepare failed');
       msg.textContent = 'Cannot open stream (' + (e && e.name ? e.name : e) + ')';
-      try { AV.close(); } catch (x) {}
+      hardClose();          /* a failed stream leaves a wedged player: replace it */
       usingAv = false;
     });
   } catch (e) {
