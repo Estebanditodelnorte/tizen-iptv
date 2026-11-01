@@ -169,6 +169,8 @@ https://filmex-filmex-xumo.amagi.tv/playlist.m3u8
 http://158.172.217.18:8000/play/a00d/index.m3u8
 #EXTINF:-1 tvg-id="MultiPremier.mx@SD" tvg-logo="https://i.imgur.com/H3PzGZW.png" group-title="Movies",MultiPremier (1080p)
 http://168.196.127.137:6001/play/a08n/index.m3u8
+#EXTINF:-1 tvg-id="PlutoTVZombies.de@ES" tvg-logo="https://images.pluto.tv/channels/65786888b228b7000843ad9a/colorLogoPNG.png" group-title="Movies",Pluto TV Zombies
+https://jmp2.uk/plu-65786888b228b7000843ad9a.m3u8
 #EXTINF:-1 tvg-id="DisneyJrLatinAmerica.ar@NorthHD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/e/e3/2024_Disney_Jr._Logo.svg" group-title="Animation;Kids",Disney Jr. Latin America North HD (1080p)
 http://181.78.14.26:4000/play/a073/index.m3u8
 #EXTINF:-1 tvg-id="DisneyChannelLatinAmerica.ar@Mexico" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/f/ff/2024_Disney_Channel_text_logo.svg" group-title="Animation;Kids",Disney Channel Latin America Mexico (720p)
