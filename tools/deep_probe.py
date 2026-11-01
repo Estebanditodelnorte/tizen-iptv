@@ -29,13 +29,16 @@ def fetch(url, head=False, limit=None):
     req = urllib.request.Request(url, headers={'User-Agent': UA, 'Accept': '*/*'})
     with urllib.request.urlopen(req, timeout=TIMEOUT, context=CTX) as r:
         if head:
-            return b'', r.getcode(), (r.headers.get('Content-Type') or '').lower()
+            return b'', r.getcode(), (r.headers.get('Content-Type') or '').lower(), r.geturl()
         data = r.read(limit) if limit else r.read()
-        return data, r.getcode(), (r.headers.get('Content-Type') or '').lower()
+        return data, r.getcode(), (r.headers.get('Content-Type') or '').lower(), r.geturl()
 
 def text(url):
-    data, _code, _ct = fetch(url, limit=400000)
-    return data.decode('utf-8', 'replace')
+    """Return (playlist text, final URL after redirects). The final URL matters: shorteners
+    like jmp2.uk redirect to the real manifest, and relative segment paths must resolve
+    against the real one, not the short one."""
+    data, _code, _ct, final = fetch(url, limit=400000)
+    return data.decode('utf-8', 'replace'), final
 
 def resolve(base, uri):
     return urllib.parse.urljoin(base, uri)
@@ -53,13 +56,14 @@ def first_segment(playlist, base):
 def check(entry):
     url = entry['url']
     try:
-        body, code, ctype = fetch(url, limit=400000)
+        body, code, ctype, final_url = fetch(url, limit=400000)
         if code != 200:
             return entry, False, 'http_%d' % code
         head = body[:64]
         if head[:7] != b'#EXTM3U' and 'mpegurl' not in ctype:
             return entry, False, 'not_hls'
         playlist = body.decode('utf-8', 'replace')
+        base = final_url
 
         if '#EXT-X-STREAM-INF' in playlist:
             variants = []
@@ -75,29 +79,38 @@ def check(entry):
                                 bw = 0
                     for nxt in lines[i + 1:]:
                         if nxt and not nxt.startswith('#'):
-                            variants.append((bw, resolve(url, nxt.strip())))
+                            variants.append((bw, resolve(base, nxt.strip())))
                             break
             if not variants:
                 return entry, False, 'no_variants'
             variants.sort()
             variant_url = variants[0][1]
-            playlist = text(variant_url)
-            base = variant_url
-        else:
-            base = url
+            playlist, base = text(variant_url)
 
         if not is_media(playlist):
             return entry, False, 'no_segments'
 
         for line in playlist.splitlines():
-            if line.startswith('#EXT-X-KEY') and 'METHOD=NONE' not in line:
+            if not line.startswith('#EXT-X-KEY'):
+                continue
+            upper = line.upper()
+            if 'METHOD=NONE' in upper:
+                continue
+            if 'WIDEVINE' in upper or 'PLAYREADY' in upper or 'URN:UUID' in upper:
                 return entry, False, 'drm'
+            if 'METHOD=SAMPLE-AES' in upper:
+                return entry, False, 'drm'
+            if 'METHOD=AES-128' in upper:
+                # Standard HLS encryption: the player fetches the key itself. Segments are
+                # ciphertext, so the media-bytes check below cannot apply.
+                return entry, True, 'aes128'
+            return entry, False, 'drm'
 
         seg = first_segment(playlist, base)
         if not seg:
             return entry, False, 'no_segment_url'
 
-        seg_bytes, code, _ct = fetch(seg, limit=1024)
+        seg_bytes, code, _ct, _final = fetch(seg, limit=1024)
         if code != 200 or not seg_bytes:
             return entry, False, 'segment_http_%d' % code
         if seg_bytes[0] == 0x47:

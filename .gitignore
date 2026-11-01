@@ -8,3 +8,5 @@ app/author-signature.xml
 app/signature1.xml
 app/.manifest.tmp
 tools/.feeds.json
+reports/
+playlists/*-deep.m3u
