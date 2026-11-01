@@ -13,6 +13,17 @@ reversible with one commit and must not touch the playback path until step 3.
 - A preflight XHR was tried (`acb6981`) and rejected channels that play. Reverted in
   `ae975a8`/`d2a87f3`. Whatever we do next must not repeat that.
 
+### New evidence: the hang happens on STOP, not on OPEN
+
+Reported: watching **El Chavo**, pressed BACK to reach the tag menu, app froze and needed a
+restart. That matters, because BACK while playing runs `stopPlayback()` →
+`cancelPending()` → `AV.stop()` + `AV.close()` **before** any menu opens.
+
+So the prime suspect is no longer only `AV.open()`. `AV.close()` on a live HLS stream can
+block just as easily, and step 1 must instrument both. It also explains why "it hangs when a
+channel is bad" and "it hangs when I press BACK" can be the same bug seen from two sides: both
+run a native call that can block.
+
 ## Hypotheses, most likely first
 
 1. **`AV.open()` or `prepareAsync()` blocks synchronously** on a stream the decoder refuses.
@@ -35,8 +46,9 @@ the list**, or simplest: always show a one-line status bar):
 state=PLAYING open#7 t=1234ms last=onbufferingstart
 ```
 
-Contents: `AV.getState()` before and after each call, a counter of opens, milliseconds since
-`open()`, and the last callback name that fired. Nothing about the playback path changes; the
+Contents: `AV.getState()` before and after each call, a counter of opens **and of stops**,
+milliseconds since `open()`, and the last callback name that fired. Instrument `stopPlayback`
+and `cancelPending` too — the El Chavo report points there. Nothing about the playback path changes; the
 only risk is a cosmetic regression.
 
 Also record the last 20 events in `localStorage` (`iptv-log`), so after a hang you can
