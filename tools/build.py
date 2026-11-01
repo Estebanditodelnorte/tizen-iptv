@@ -418,13 +418,24 @@ function startChannel() {
 function loadRate() {
   var r = {}, k;
   for (k in DEFAULT_RATE) r[k] = DEFAULT_RATE[k];      /* baked in from playlists/ratings.json */
-  try {
-    var raw = localStorage.getItem('iptv-rate');
-    if (raw) {
-      var s = JSON.parse(raw);
-      for (k in s) { if (s[k] === 0) delete r[k]; else r[k] = s[k]; }
-      return r;
+  function read(key) {
+    try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; }
+  }
+  var main = read('iptv-rate');
+  var bak = read('iptv-rate-bak');
+  var s = main || bak;
+  if (s) {
+    for (k in s) { if (s[k] === 0) delete r[k]; else r[k] = s[k]; }
+    /* the two copies guard each other: a truncated write loses one, not both */
+    var other = (main && bak) ? (s === main ? bak : main) : null;
+    if (other) {
+      for (k in other) {
+        if (!(k in s)) { if (other[k] === 0) delete r[k]; else r[k] = other[k]; }
+      }
     }
+    return r;
+  }
+  try {
     var f = JSON.parse(localStorage.getItem('iptv-fav') || '{}');
     for (k in f) r[k] = 3;
     var b = JSON.parse(localStorage.getItem('iptv-bad-' + TABS[tab]) || '{}');
@@ -433,7 +444,11 @@ function loadRate() {
   return r;
 }
 function saveRate() {
-  try { localStorage.setItem('iptv-rate', JSON.stringify(RATE)); } catch (e) {}
+  var s = JSON.stringify(RATE);
+  try {
+    localStorage.setItem('iptv-rate', s);
+    localStorage.setItem('iptv-rate-bak', s);   /* second copy, read back on load */
+  } catch (e) {}
 }
 function markBad(name) {
   RATE[name] = 1;
