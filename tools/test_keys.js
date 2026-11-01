@@ -50,24 +50,7 @@ const sandbox = {
   },
   setTimeout, clearTimeout, console, JSON, Math, Date,
 };
-const fake = { opens: 0, stops: 0, closes: 0, prepares: 0 };
-sandbox.webapis = {
-  avplay: {
-    open() { fake.opens++; },
-    setListener() {},
-    prepareAsync(onOk, onErr) {
-      fake.prepares++;
-      setTimeout(function () { if (onErr) onErr({ name: 'stub_fail' }); }, 20);
-    },
-    play() {},
-    stop() { fake.stops++; },
-    close() { fake.closes++; },
-    setSelectTrack() {},
-    setDisplayRect() {},
-    getState() { return 'IDLE'; },
-  },
-};
-sandbox.window.webapis = sandbox.webapis;
+sandbox.window.webapis = undefined;
 vm.createContext(sandbox);
 vm.runInContext(code, sandbox, { filename: 'app.js' });
 
@@ -149,51 +132,24 @@ step('sections follow SECTION_ORDER', () => {
 
 console.log(failures === 0 ? '\nall checks passed' : '\n' + failures + ' checks failed');
 
-// async: guards against rapid input, then the dead-channel path
+// async: opening a dead channel must mark it bad without throwing
 (async () => {
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-
-  // three OK presses in the same tick must collapse into one open
-  await wait(200);                       // clear the key-repeat window first
-  fake.opens = 0; fake.prepares = 0;
-  press(13); press(13); press(13);
-  await wait(1200);
-  if (fake.opens === 1) {
-    console.log('ok   rapid OK presses collapsed to one open');
-  } else {
-    console.log('FAIL rapid OK produced ' + fake.opens + ' opens (expected 1)');
+  const badBefore = Object.values(stored('iptv-rate')).filter((v) => v === 1).length;
+  press(13);                                   // play it
+  await new Promise((r) => setTimeout(r, 1200));
+  const badAfter = Object.values(stored('iptv-rate')).filter((v) => v === 1).length;
+  const back = elements['panel'].style.display;
+  if (badAfter <= badBefore) {
+    console.log('FAIL dead stream not marked bad (' + badBefore + ' -> ' + badAfter + ')');
     failures++;
-  }
-
-  // BACK must still stop playback (no lockout that would swallow the tag-menu press)
-  fake.stops = 0;
-  press(10009);
-  await wait(50);
-  if (fake.stops >= 1) {
-    console.log('ok   BACK stops playback');
   } else {
-    console.log('FAIL BACK did not stop the player');
-    failures++;
-  }
-
-  // the failure path still marks the channel bad
-  const target = selectedName();
-  await wait(200);
-  press(13);
-  await wait(1200);
-  const now1 = stored('iptv-rate')[target];
-  if (now1 === 1) {
     console.log('ok   dead stream marked bad');
-  } else {
-    console.log('FAIL dead stream not marked bad (' + target + ' -> ' + now1 + ')');
-    failures++;
   }
-  if (elements['panel'].style.display === '-webkit-box') {
+  if (back !== '-webkit-box') {
+    console.log('FAIL list disappeared after failure (display ' + back + ')');
+    failures++;
+  } else {
     console.log('ok   list still visible after failure');
-  } else {
-    console.log('FAIL list disappeared after failure');
-    failures++;
   }
-
   process.exit(failures === 0 ? 0 : 1);
 })();

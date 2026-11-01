@@ -66,6 +66,36 @@ The fix for (1) is small, contained, and testable without a TV:
 
 Arrows need no guard: they only repaint.
 
+
+### Tried and reverted: input guards (5927285)
+
+Added three guards: 150 ms OK repeat window, generation token so a burst collapses to one
+open, and `stopPlayback()` bumping the token so a scheduled open cannot land after BACK.
+
+**It still hung**, and the recipe was specific: **play a channel → BACK → pick another channel
+quickly**. So overlapping opens were not the whole story — the failing sequence is
+`stop/close` immediately followed by `open`. Guards are reverted; the working build is `948a96c`.
+
+What that tells us:
+
+- Rapid input is only dangerous when it produces **stop → open with almost no gap**.
+- The suspect is the native transition itself: `AV.close()` on a live stream followed straight
+  away by `AV.open()`. Either `close()` blocks (thread frozen, nothing helps) or it returns
+  before the pipeline has actually released, and `open()` then wedges it.
+
+Two candidate experiments, in this order:
+
+- **A. Cooldown after stop.** Refuse a new open for about 1 s after BACK and show
+  "please wait" in the hint line. Cheap, reversible, and if the hang disappears it proves the
+  pipeline needs time to release. Users pressing slowly would never notice.
+- **B. Stop without closing.** On BACK, call `stop()` only and keep the player object for the
+  next channel. Fewer native transitions, no close/open race. Riskier: a wedged player stays
+  wedged, so this needs the cooldown fallback anyway.
+
+Still needed before either: **the status line text at the moment of the freeze**. It names
+`stop:before`, `close:before` or `open:before`, which decides between "close blocks" (A is
+pointless, B might help) and "open blocks" (A is the right fix).
+
 ## Step 1 — diagnostics only, zero behaviour change
 
 Add an on-screen diagnostic panel (toggle with a key that already arrives, e.g. **BACK held on

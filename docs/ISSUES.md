@@ -16,6 +16,10 @@ They are listed here rather than re-applied, because each carries risk and the r
       tag menu froze the app; also reported "freezes after about 5 tags". A status line now
       prints the operation around each native call (`docs/PLAN-HANG.md`). **Waiting on a
       photo of the frozen line before changing any playback code.**
+- [ ] **Stop → open with no gap is the confirmed trigger.** Play a channel, press BACK, pick
+      another quickly: it hung with the input guards installed (`5927285`, reverted). Rapid
+      input alone is not the cause; the `close()` → `open()` transition is. Next experiments:
+      a cooldown after BACK, or stopping without closing. See `docs/PLAN-HANG.md`.
 - [ ] **Rapid input can wedge the decoder (leading suspect for both hangs).** Each OK press
       schedules its own `playAv()` 200 ms later: no guard, no token. Three quick presses means
       three overlapping `AV.open()`/`prepareAsync()` on one player object, which is not

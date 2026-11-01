@@ -195,8 +195,6 @@ var DEFAULT_RATE = __RATES__;
 var tab = 0, CH = [], idx = 0, rows = [], playing = false, usingAv = false, listVisible = true, hideTimer = null;
 var RATE = {}, testing = false, testIdx = 0, testTimer = null;
 var connectTimer = null, pendingOpen = false;
-/* guards against rapid input: one player object is not re-entrant */
-var openGen = 0, lastOkAt = 0;
 /* category overrides chosen on the TV: channel name -> group */
 var CAT = {}, CATS = [], catMode = false, catIdx = 0, catTarget = '', catTimer = null;
 /* Diagnostics. Deliberately dumb: one line of text, no storage writes, updated around the
@@ -332,7 +330,6 @@ function hideList() {
   hintEl.textContent = 'any key: channel list   BACK: stop';
 }
 function stopPlayback() {
-  openGen++;   /* any open already scheduled for this stop is now stale: never let it land */
   if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
   stopCount++;
   log('stop:before');
@@ -430,13 +427,8 @@ function startChannel() {
   nowEl.textContent = c.name;
   hintEl.textContent = 'BACK stop';
   msg.textContent = 'Connecting...';
-  /* let the previous teardown settle before opening the next one. The token means a burst of
-     OK presses collapses into one open instead of stacking three into the decoder. */
-  var myGen = ++openGen;
-  setTimeout(function () {
-    if (myGen !== openGen) return;
-    playAv(c);
-  }, 200);
+  /* let the previous teardown settle before opening the next one */
+  setTimeout(function () { playAv(c); }, 200);
   if (hideTimer) clearTimeout(hideTimer);
   hideTimer = setTimeout(hideList, 4000);
 }
@@ -779,12 +771,7 @@ document.addEventListener('keydown', function (e) {
   else if (k === 39) { tab = (tab + 1) % TABS.length; render(); }
   else if (k === 38) { idx = Math.max(0, idx - 1); paint(); }
   else if (k === 40) { idx = Math.min(CH.length - 1, idx + 1); paint(); }
-  else if (k === 13 || k === 415) {
-    var nowOk = new Date().getTime();
-    if (nowOk - lastOkAt < 150) { e.preventDefault(); return; }   /* key repeat */
-    lastOkAt = nowOk;
-    startChannel();
-  }
+  else if (k === 13 || k === 415) { startChannel(); }
   else if (k >= 48 && k <= 57) { assignCat(NUMCATS[k]); }
   else if (k === 404) { startTest(); }
   else if (k === 10009 || k === 27 || k === 8) {
