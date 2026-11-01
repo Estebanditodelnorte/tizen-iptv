@@ -64,31 +64,32 @@ step('digit 3 assigns Kids', () => {
   press(51);
   if (Object.values(stored('iptv-cat')).indexOf('Kids') === -1) throw new Error('no Kids mapping stored');
 });
-step('BACK opens the action menu, OK stars it', () => {
-  press(10009);   // open menu
-  press(13);      // first option: add to favourites
-  if (Object.keys(stored('iptv-fav')).length === 0) throw new Error('nothing stored in iptv-fav');
+
+const rated = () => Object.values(stored('iptv-rate'))[0];
+
+step('BACK + OK rates Very good', () => {
+  press(10009); press(13);
+  if (rated() !== 3) throw new Error('expected rating 3, got ' + rated());
 });
-step('BACK, DOWN, OK marks it broken', () => {
-  press(10009);
-  press(40);
-  press(13);
-  if (Object.keys(stored('iptv-bad-canada')).length === 0) throw new Error('nothing stored in iptv-bad-canada');
+step('BACK + DOWN + OK rates Good', () => {
+  press(10009); press(40); press(13);
+  if (rated() !== 2) throw new Error('expected rating 2, got ' + rated());
 });
-step('BACK, DOWN, OK again marks it working', () => {
-  press(10009);
-  press(40);
-  press(13);
-  if (Object.keys(stored('iptv-bad-canada')).length !== 0) throw new Error('broken flag not cleared');
+step('BACK + DOWN x2 + OK rates Bad', () => {
+  press(10009); press(40); press(40); press(13);
+  if (rated() !== 1) throw new Error('expected rating 1, got ' + rated());
 });
-step('BACK then BACK cancels without changing anything', () => {
-  const before = JSON.stringify(stored('iptv-cat'));
-  press(10009);
-  press(10009);
-  if (JSON.stringify(stored('iptv-cat')) !== before) throw new Error('cancel changed state');
+step('BACK + DOWN x3 + OK clears the rating', () => {
+  press(10009); press(40); press(40); press(40); press(13);
+  if (Object.keys(stored('iptv-rate')).length !== 0) throw new Error('rating not cleared');
+});
+step('Cancel changes nothing', () => {
+  const before = JSON.stringify(stored('iptv-rate'));
+  press(10009); press(40); press(40); press(40); press(40); press(13);
+  if (JSON.stringify(stored('iptv-rate')) !== before) throw new Error('cancel changed state');
 });
 step('OK plays without throwing', () => press(13));
-step('BACK stops playback, next BACK opens the menu', () => { press(10009); press(10009); });
+step('BACK stops playback', () => press(10009));
 step('RIGHT switches list', () => press(39));
 step('LEFT switches back', () => press(37));
 

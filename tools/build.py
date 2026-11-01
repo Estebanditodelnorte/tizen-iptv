@@ -128,11 +128,10 @@ var SOURCES = __DATA__;
 var TABS = __TABS__;
 var LABELS = __LABELS__;
 var tab = 0, CH = [], idx = 0, rows = [], playing = false, usingAv = false, listVisible = true, hideTimer = null;
-var BAD = {}, testing = false, testIdx = 0, testTimer = null;
+var RATE = {}, testing = false, testIdx = 0, testTimer = null;
 var connectTimer = null, pendingOpen = false;
 /* category overrides chosen on the TV: channel name -> group */
 var CAT = {}, CATS = [], catMode = false, catIdx = 0, catTarget = '', catTimer = null;
-var FAV = {};
 var items = document.getElementById('items');
 var tabsEl = document.getElementById('tabs');
 var panel = document.getElementById('panel');
@@ -156,26 +155,29 @@ function buildTabs() {
 }
 function render(keepIdx) {
   var src = SOURCES[TABS[tab]] || [];
-  BAD = loadBad();
-  FAV = loadFav();
-  var fav = [], normal = [], broken = [];
+  RATE = loadRate();
+  var best = [], good = [], normal = [], bad = [];
   for (var i = 0; i < src.length; i++) {
-    var n = src[i].name;
-    if (BAD[n]) broken.push(src[i]);
-    else if (FAV[n]) fav.push(src[i]);
+    var r = RATE[src[i].name];
+    if (r === 3) best.push(src[i]);
+    else if (r === 2) good.push(src[i]);
+    else if (r === 1) bad.push(src[i]);
     else normal.push(src[i]);
   }
-  CH = fav.concat(normal, broken);
-  var favCount = fav.length;
-  var brokenStart = fav.length + normal.length;
+  /* rating drives the order: very good, good, unrated in their own categories, bad last */
+  CH = best.concat(good, normal, bad);
+  var bestEnd = best.length;
+  var goodEnd = bestEnd + good.length;
+  var badStart = goodEnd + normal.length;
   if (!keepIdx) idx = 0;
   if (idx >= CH.length) idx = Math.max(0, CH.length - 1);
   rows = []; items.innerHTML = ''; painted = -1;
   var lastGroup = null;
   for (var i = 0; i < CH.length; i++) {
     var gname;
-    if (i < favCount) gname = '\u2605 FAVOURITES';
-    else if (i >= brokenStart) gname = 'BROKEN \u2014 not playing';
+    if (i < bestEnd) gname = '\u2605\u2605 VERY GOOD';
+    else if (i < goodEnd) gname = '\u2605 GOOD';
+    else if (i >= badStart) gname = '\u2717 BAD \u2014 keep apart';
     else gname = (CAT[CH[i].name] || CH[i].group);
     if (gname !== lastGroup) {
       lastGroup = gname;
@@ -186,7 +188,7 @@ function render(keepIdx) {
     }
     var d = document.createElement('div');
     d.className = 'ch';
-    d.textContent = (BAD[CH[i].name] ? '\u2717 ' : '') + CH[i].name;
+    d.textContent = (RATE[CH[i].name] === 1 ? '\u2717 ' : '') + CH[i].name;
     items.appendChild(d);
     rows.push(d);
   }
@@ -327,15 +329,30 @@ function startChannel() {
   hideTimer = setTimeout(hideList, 4000);
 }
 
-function loadBad() {
-  try { return JSON.parse(localStorage.getItem('iptv-bad-' + TABS[tab]) || '{}'); } catch (e) { return {}; }
+/* Rating replaces the old star/broken flags: 3 = very good (top), 2 = good, 1 = bad (bottom),
+   absent = unrated, which keeps its category. */
+function loadRate() {
+  try {
+    var raw = localStorage.getItem('iptv-rate');
+    if (raw) return JSON.parse(raw);
+    var r = {}, k;
+    try {
+      var f = JSON.parse(localStorage.getItem('iptv-fav') || '{}');
+      for (k in f) r[k] = 3;
+    } catch (e) {}
+    try {
+      var b = JSON.parse(localStorage.getItem('iptv-bad-' + TABS[tab]) || '{}');
+      for (k in b) r[k] = 1;
+    } catch (e) {}
+    return r;
+  } catch (e) { return {}; }
 }
-function saveBad(o) {
-  try { localStorage.setItem('iptv-bad-' + TABS[tab], JSON.stringify(o)); } catch (e) {}
+function saveRate() {
+  try { localStorage.setItem('iptv-rate', JSON.stringify(RATE)); } catch (e) {}
 }
-function markBad(name, reason) {
-  BAD[name] = reason || 'fail';
-  saveBad(BAD);
+function markBad(name) {
+  RATE[name] = 1;
+  saveRate();
 }
 /* Walk every channel in the current tab, open it, and record whether the decoder accepts it.
    This is the only test that reflects what the TV can actually play. */
@@ -343,7 +360,6 @@ function startTest() {
   if (testing) return;
   if (playing) stopPlayback();
   testing = true; testIdx = 0;
-  BAD = loadBad();
   testStep();
 }
 function testStep() {
@@ -393,47 +409,26 @@ function assignCat(cat) {
   hintEl.textContent = name + '  \u2192  ' + cat;
 }
 
-function loadFav() {
-  try { return JSON.parse(localStorage.getItem('iptv-fav') || '{}'); } catch (e) { return {}; }
-}
-function saveFav() {
-  try { localStorage.setItem('iptv-fav', JSON.stringify(FAV)); } catch (e) {}
-}
-/* The remote only delivers arrows, OK and BACK to a web app on this firmware (numbers and
-   colour keys are swallowed by the platform), so tagging uses LEFT and RIGHT:
-   LEFT stars a channel into FAVOURITES at the top, RIGHT flags it BROKEN at the bottom. */
 function focusName(name) {
   for (var i = 0; i < CH.length; i++) {
     if (CH[i].name === name) { idx = i; paint(); return; }
   }
 }
-function toggleFav() {
-  if (!CH[idx]) return;
-  var name = CH[idx].name;
-  if (FAV[name]) { delete FAV[name]; hintEl.textContent = name + '  un-starred'; }
-  else { FAV[name] = 1; delete BAD[name]; saveBad(BAD); hintEl.textContent = name + '  \u2605 favourite'; }
-  saveFav(); render(true); focusName(name);
-}
-function toggleBad() {
-  if (!CH[idx]) return;
-  var name = CH[idx].name;
-  if (BAD[name]) { delete BAD[name]; hintEl.textContent = name + '  marked working'; }
-  else { BAD[name] = 1; delete FAV[name]; saveFav(); hintEl.textContent = name + '  marked broken'; }
-  saveBad(BAD); render(true); focusName(name);
-}
 
 var actMode = false, actIdx = 0;
+function ratingOf(name) { return RATE[name] || 0; }
 function actionList() {
   if (!CH[idx]) return [];
-  var n = CH[idx].name;
-  var list = [];
-  list.push(FAV[n] ? '\u2605 Remove from favourites' : '\u2605 Add to favourites');
-  list.push(BAD[n] ? '\u2713 This one works' : '\u2717 Mark as broken');
-  list.push('Keep it in its category only');
-  list.push('Cancel');
-  return list;
+  var r = ratingOf(CH[idx].name);
+  return [
+    (r === 3 ? '\u2022 ' : '   ') + '\u2605\u2605  Very good  (top of the list)',
+    (r === 2 ? '\u2022 ' : '   ') + '\u2605   Good',
+    (r === 1 ? '\u2022 ' : '   ') + '\u2717   Bad       (bottom of the list)',
+    '   Clear rating',
+    '   Cancel'
+  ];
 }
-/* BACK opens this while browsing: an explicit menu, so nothing is a hidden shortcut. */
+/* BACK while browsing opens this: an explicit menu, so nothing is a hidden shortcut. */
 function openActions() {
   if (!CH[idx]) return;
   actMode = true;
@@ -444,7 +439,7 @@ function renderActions() {
   var box = document.getElementById('cat');
   var opts = actionList();
   var html = '<h2>' + (CH[idx] ? CH[idx].name : '') + '</h2>' +
-             '<div class="sub">What should happen to this channel? &nbsp; OK choose &nbsp; BACK cancel</div>';
+             '<div class="sub">Rate this channel &nbsp; &uarr;&darr; choose &nbsp; OK set &nbsp; BACK cancel</div>';
   for (var i = 0; i < opts.length; i++) {
     html += '<div class="cat' + (i === actIdx ? ' sel' : '') + '">' + opts[i] + '</div>';
   }
@@ -457,18 +452,11 @@ function closeActions() {
 }
 function applyAction() {
   var name = CH[idx].name;
-  if (actIdx === 0) {
-    if (FAV[name]) { delete FAV[name]; hintEl.textContent = name + '  un-starred'; }
-    else { FAV[name] = 1; delete BAD[name]; saveBad(BAD); hintEl.textContent = name + '  \u2605 favourite'; }
-    saveFav();
-  } else if (actIdx === 1) {
-    if (BAD[name]) { delete BAD[name]; hintEl.textContent = name + '  marked working'; }
-    else { BAD[name] = 1; delete FAV[name]; saveFav(); hintEl.textContent = name + '  marked broken'; }
-    saveBad(BAD);
-  } else if (actIdx === 2) {
-    delete FAV[name]; delete BAD[name]; saveFav(); saveBad(BAD);
-    hintEl.textContent = name + '  marks cleared';
-  }
+  if (actIdx === 0) { RATE[name] = 3; hintEl.textContent = name + '  \u2605\u2605 very good'; }
+  else if (actIdx === 1) { RATE[name] = 2; hintEl.textContent = name + '  \u2605 good'; }
+  else if (actIdx === 2) { RATE[name] = 1; hintEl.textContent = name + '  \u2717 bad'; }
+  else if (actIdx === 3) { delete RATE[name]; hintEl.textContent = name + '  rating cleared'; }
+  saveRate();
   closeActions();
   render(true);
   focusName(name);
