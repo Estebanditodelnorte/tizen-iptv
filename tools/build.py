@@ -344,11 +344,14 @@ function preflight(url, cb) {
   var timer = setTimeout(function () {
     try { if (xhr) xhr.abort(); } catch (e) {}
     finish(false, 'timeout');
-  }, 5000);
+  }, 8000);
   function finish(ok, why) {
     if (done) return;
     done = true;
     clearTimeout(timer);
+    /* release the socket before AVPlay opens the same URL: on this firmware a lingering
+       request can contend with the decoder for the network stack */
+    try { if (xhr) xhr.abort(); } catch (e) {}
     cb(ok, why);
   }
   try {
@@ -359,8 +362,10 @@ function preflight(url, cb) {
       if (xhr.status >= 200 && xhr.status < 400) {
         var body = xhr.responseText || '';
         finish(body.indexOf('#EXTM3U') !== -1 ? true : false, 'body');
+      } else if (!xhr.status) {
+        finish(null, 'unknown');            /* status 0 = blocked or opaque, not dead */
       } else {
-        finish(false, 'http_' + xhr.status);
+        finish(null, 'http_' + xhr.status); /* AVPlay sends its own headers; let it try */
       }
     };
     xhr.onerror = function () { finish(null, 'unknown'); };
@@ -383,9 +388,12 @@ function playAv(c) {
   usingAv = true;
   pendingOpen = true;
   msg.textContent = 'Connecting...';
-  preflight(c.url, function (ok) {
+  preflight(c.url, function (ok, why) {
     if (!pendingOpen) return;                 /* the user moved on */
-    if (ok === false) {
+    /* Only total silence is fatal. A 403 to this request, an opaque reply or a body we
+       could not read is left to AVPlay: it sends its own headers and can still play
+       what this check could not see. */
+    if (ok === false && why === 'timeout') {
       pendingOpen = false;
       usingAv = false;
       playFailed(c, 'no response', 'No response from this stream');
