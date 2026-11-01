@@ -111,6 +111,7 @@ var TABS = __TABS__;
 var LABELS = __LABELS__;
 var tab = 0, CH = [], idx = 0, rows = [], playing = false, usingAv = false, listVisible = true, hideTimer = null;
 var BAD = {}, testing = false, testIdx = 0, testTimer = null;
+var connectTimer = null, pendingOpen = false;
 var items = document.getElementById('items');
 var tabsEl = document.getElementById('tabs');
 var panel = document.getElementById('panel');
@@ -197,11 +198,7 @@ function hideList() {
 }
 function stopPlayback() {
   if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-  if (usingAv && AV) {
-    try { AV.stop(); } catch (e) {}
-    try { AV.close(); } catch (e) {}
-    usingAv = false;
-  }
+  cancelPending();
   playing = false; listVisible = true;
   document.documentElement.className = '';
   document.body.className = '';
@@ -210,9 +207,36 @@ function stopPlayback() {
   idle.style.display = '-webkit-box';
   nowEl.textContent = ''; msg.textContent = ''; hintEl.textContent = '';
 }
+/* Tear the player down safely. A stream that never reached "prepared" leaves AVPlay wedged:
+   stop()/close() must be attempted anyway, and the next open() must wait a beat. */
+function cancelPending() {
+  if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; }
+  pendingOpen = false;
+  if (AV) {
+    try { AV.stop(); } catch (e) {}
+    try { AV.close(); } catch (e) {}
+  }
+  usingAv = false;
+}
 function playAv(c) {
+  cancelPending();
   usingAv = true;
+  pendingOpen = true;
   msg.textContent = 'Connecting...';
+  /* If the stream never answers, give up instead of waiting forever - this is what made a
+     dead channel swallow every later selection. */
+  connectTimer = setTimeout(function () {
+    if (!pendingOpen) return;
+    pendingOpen = false;
+    try { AV.stop(); } catch (e) {}
+    try { AV.close(); } catch (e) {}
+    usingAv = false;
+    msg.textContent = 'No response from this stream';
+  }, 12000);
+  function settled() {
+    pendingOpen = false;
+    if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; }
+  }
   try {
     AV.open(c.url);
     applyRect();
@@ -224,29 +248,37 @@ function playAv(c) {
       onerror: function (e) { msg.textContent = 'Stream failed (' + (e && e.name ? e.name : e) + ')'; }
     });
     AV.prepareAsync(function () {
+      settled();
       msg.textContent = '';
       /* Some streams carry audio as a separate HLS rendition (EXT-X-MEDIA); older Tizen
          firmware then plays video silently. Ask for the first audio track explicitly. */
       try { AV.setSelectTrack('AUDIO', 0); } catch (e) {}
       try { AV.play(); } catch (e) { msg.textContent = 'Play error: ' + e; }
     }, function (e) {
+      settled();
       msg.textContent = 'Cannot open stream (' + (e && e.name ? e.name : e) + ')';
+      try { AV.close(); } catch (x) {}
+      usingAv = false;
     });
   } catch (e) {
+    settled();
     msg.textContent = 'AVPlay error: ' + e;
+    usingAv = false;
   }
 }
 function startChannel() {
   var c = CH[idx];
   if (!c) return;
-  if (usingAv && AV) { try { AV.stop(); } catch (e) {} try { AV.close(); } catch (e) {} usingAv = false; }
+  cancelPending();
   playing = true;
   document.documentElement.className = 'playing';
   document.body.className = 'playing';
   idle.style.display = 'none';
   nowEl.textContent = c.name;
   hintEl.textContent = 'BACK stop';
-  playAv(c);
+  msg.textContent = 'Connecting...';
+  /* let the previous teardown settle before opening the next one */
+  setTimeout(function () { playAv(c); }, 200);
   if (hideTimer) clearTimeout(hideTimer);
   hideTimer = setTimeout(hideList, 4000);
 }
