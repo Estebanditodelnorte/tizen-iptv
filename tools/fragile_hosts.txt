@@ -1,0 +1,31 @@
+# Hosts that reliably produce "it answered but shows nothing" on this TV (Tizen 2.3).
+# Not a blacklist: plenty of channels behind these hosts do play, so use this to sort
+# channels out of the way, never to delete them.
+#
+# Why they fail: server-side ad insertion (SSAI) hands out segments personalised per
+# session. The manifest is public, so every probe says "fine", then the TV stalls.
+# Same symptom as a geo-locked feed: manifest serves, segments do not.
+#
+# Measured 2026-11: 19 channels marked bad by the user all came from these families
+# (plus US-only PBS). Plain broadcaster HLS from these hosts is fine - it is the
+# ad-stitching layer that breaks.
+
+# FAST platforms with per-session ad stitching
+roku.wurl.tv
+wurl.com
+getpublica.com
+otteravision.com
+jwplayer.com
+jwp.services
+jmp2.uk
+*.amagi.tv
+
+# Individual offenders seen in the wild
+cdn.fast.jwp.services
+origin.dpsgo.com
+cdn4.skygo.mn
+lge-lgla2.otteravision.com
+igd-it-runtime.otteravision.com
+
+# US-only public broadcasters (manifest serves, segments are refused outside the US)
+livestream.pbskids.org

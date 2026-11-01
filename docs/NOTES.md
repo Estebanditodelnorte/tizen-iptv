@@ -94,29 +94,117 @@ python3 /mnt/c/Users/Public/uninstall-iptv.py     # package IPTVPlayer
   (password blank in profile, answered through a PTY). Samsung partner cert is NOT needed.
 - `tizen package`, not `build.py --sign`, is what produced the packages.
 
-## Current state of the app
+## Current state of the app (v2, the rebuilt player)
 
-- Package `IPTVPlayer`, app id `IPTVPlayer.App`, name **IPTV**, sideloaded and working.
-- **v1.9.0 plays video** â€” the fixes were the `webapis.js` include, the
-  `object[type=application/avplayer]` surface sized to `setDisplayRect`, and transparent
-  `html`/`body` while playing.
-- Channel list parsed from `https://iptv-org.github.io/iptv/countries/ca.m3u`
-  (265 channels, `C:\Users\Public\iptv\ca.m3u`).
-- **All 265 URLs probed from the laptop**; 216 answered HTTP 200 with an HLS content type.
-  The app is built from the validated subset (`ca-working.m3u`, `probe-report.json` holds the
-  per-channel result). Every working stream is HLS (`.m3u8`) â€” no MPEG-TS or DASH in the list.
-- Builders: `C:\Users\Public\build-iptv-app9.py` (current), earlier ones kept for reference.
-- Layout: channel list on the left, video in the right pane; list auto-hides 4 s into playback,
-  any key brings it back, BACK stops.
-- Chasing any remaining per-channel failures: it is now stream-side (geo-blocked segment,
-  DRM, or a codec the 2015 decoder lacks), not the app.
+- Package `IPTVPlayer`, app id `IPTVPlayer.App`, sideloaded and working.
+- Seven baked-in tabs: CANADA, MEXICO, SPORTS, PUBLIC, KIDS, LEARN, MUSIC (~455 channels).
+  Playlists live in `playlists/*.m3u`, the app is generated from them by `tools/build.py`.
+- Every channel passed a video check before shipping (see `tools/video_probe.py`).
+- Navigation: arrows move and switch lists, OK plays, BACK tags. No numbers, no colours.
+- Tagging is a three-level rating plus category moves, stored on the TV.
+- `playlists/ratings.json` ships ratings that survive a rebuild and reach other copies.
+
+## Remote input: what a Tizen 2.3 web app actually receives
+
+This cost the most time. **Only arrows, OK and BACK are delivered** to a web app on this
+firmware. Number keys and the colour buttons (red/green/yellow/blue) never reach `keydown`;
+they are consumed by the platform. Registering them needs `tizen.tvinputdevice.registerKey`
+and the **`tv.inputdevice` privilege**, which this TV **rejects at install** with
+`PKGMGR_ERROR` (the same wall as the short-package-name error).
+
+Worse, `e.keyCode` for an unregistered key never arrives at all, so there is nothing to
+feature-detect. Design every interaction on arrows + OK + BACK, and treat colour/number
+shortcuts as optional extras that may silently do nothing.
+
+| Key | keyCode |
+|---|---|
+| Left / Right / Up / Down | 37 / 39 / 38 / 40 |
+| OK / Enter | 13 (also 415) |
+| Back | 10009 |
+| Red / Green / Yellow / Blue | 403 / 404 / 405 / 406 (usually never delivered) |
+
+## Why channels are "bad" — the taxonomy
+
+Reachability is nearly worthless as a predictor. HTTP 200 and a valid manifest mean nothing
+if the TV cannot decode or cannot authenticate. Ranked by how often it bit us:
+
+1. **HLS AES-128 encryption.** Tizen 2.3 cannot decrypt it, so every Pluto-backed channel
+   (`jmp2.uk/plu-...`) plays as nothing. This removed 108 channels in one pass (KIDS 156→84).
+2. **Ad-stitched FAST channels (SSAI).** Hosts: `wurl.tv`, `getpublica.com`,
+   `otteravision.com`, `jwp.services`, `jmp2.uk`, plus many `*.amagi.tv`. The manifest is
+   public but segment URLs are personalised per session, so probes look fine and the TV
+   stalls. This is the single biggest source of "it answered but shows nothing".
+3. **ECDSA server certificates.** 2015 firmware generally cannot validate them
+   (TELE 6 via `bozztv.com`). RSA everywhere else.
+4. **Leaf-only certificate chains.** Server sends one cert and no intermediate; browsers
+   fetch the issuer via AIA, old firmware does not. Suspected for Imagen TV
+   (`otteravision.com`), which is otherwise a clean H.264 stream.
+5. **Geo-locked US feeds.** `livestream.pbskids.org`, some `cloudfront.net` fronts. Manifest
+   serves, segments do not.
+6. **Timeouts / dead hosts.** Genuinely gone; the shakedown probe catches these.
+
+What does **not** correlate: advertised bitrate (a 5.0 Mbps channel works while a 4.5 Mbps
+one fails) and TLS availability (almost all of them negotiate TLS 1.2 happily).
+
+Working rule of thumb: **plain broadcaster HLS plays; ad-tech FAST channels and US
+geo-locked feeds do not.**
+
+## Probing: the mistakes that produced false results
+
+Each of these once caused a wrong decision, so they are worth re-reading before writing
+another probe.
+
+- **`HTTP 200` is not "playable".** The only trustworthy signal is a decoded video
+  elementary stream: TS → PAT → PMT → stream type 0x1b/0x24/0x02/0x10.
+- **Follow redirects before resolving relative segment URIs.** Using the original URL as the
+  base produced phantom `http_414` failures for `jmp2.uk` and Pluto links.
+- **AES-128 is not DRM.** The player decrypts AES-128; only SAMPLE-AES / Widevine /
+  PlayReady are real DRM. Treating AES-128 as DRM hid real information.
+- **Skip audio-only renditions when choosing a variant.** Some masters list an audio-only
+  variant at the lowest bandwidth; picking it makes a healthy channel look audio-only.
+- **TS parsing needs payload-start and adaptation-field handling.** A naive parser that
+  bails on the first PID-0 packet reports "no PMT" for perfectly good streams (CityNews).
+- **Measure throughput honestly.** Reading a fixed 200 KB off a fast CDN reports 20 Mbps,
+  which says nothing about the stream. Use the manifest's `BANDWIDTH` for bitrate and treat
+  a timed read as a rough idea only.
+- **Probe from the TV's network.** Numbers are only as good as the machine running them.
+
+## Testing the app itself
+
+- `node tools/test_keys.js` loads the built script against a stub DOM and fires real remote
+  key sequences at it. It exists because a rendered-HTML check proves nothing about the key
+  path: an undeclared variable made every keypress throw `ReferenceError` while the list
+  still rendered perfectly in headless Chrome.
+- The stub must clear `children` on `innerHTML` assignment, or repeated renders accumulate
+  headers and ordering assertions become meaningless.
+- `node --check` on the extracted script catches syntax errors before an install cycle.
+- `node tools/dump_sections.js` prints the section order per tab — the fastest way to see an
+  ordering regression.
+- Install fails with `ConnectionResetError` / `RESULT: FAILED` when the app is running on
+  the TV. Close it and retry; there is no remote "kill".
+
+## Ordering and tagging model
+
+- `SECTION_ORDER` in `tools/build.py` is the whole layout, in one line:
+  `['V3', 'Music', 'Kids', 'News', 'Sports', 'V2', 'Religious', '*', 'V1']`.
+  `V3/V2/V1` are the ratings; `*` expands to the remaining categories in first-appearance
+  order.
+- iptv-org writes **compound categories** (`Animation;Kids;Religious`). Each entry collapses
+  to the first token matching a known section, and inside a tab that tab's own category wins
+  (so `Kids;Sports` in SPORTS files under Sports).
+- Ratings live in the TV's `localStorage`. **There is no way to read them remotely**: SDB
+  only installs/uninstalls/launches, app data is sandboxed, and the TV cannot reach a server
+  on the laptop. The working sync is: the user photographs the list, the ratings are written
+  into `playlists/ratings.json`, and they ship with the next build. Clearing a rating is
+  stored as `0` so a baked-in default cannot come back.
+- `ratings.json` is the durable artefact. TV state is disposable; the repo is the memory.
 
 ## Untested / useful next steps
 
-- AVPlay with the `webapis.js` include (the fix in progress).
-- If HLS still fails: check `getState()`/`getCodecInfo()` and surface the error name.
-- Tizen 2.3 answers the Web Inspector on port 7011 (one WebSocket per launch) â€” a real
-  debugging channel for console errors, unlike SDB.
-- Fallback if AVPlay stays unstable: install **SS IPTV** from the Samsung store and register
-  the device on `ss-iptv.com` â€” it is built for these panels and uses AVPlay correctly.
-
+- Tizen 2.3 answers the Web Inspector on port 7011 (one WebSocket per launch) — a real
+  debugging channel, and the one plausible way to read `localStorage` remotely.
+- A "FRAGILE" section for channels on SSAI/geo hosts, so they sort out of the way without
+  being deleted.
+- Virtualise the list if long tabs still feel slow on 1.5 GB of RAM.
+- Fallback if AVPlay stays unstable: **SS IPTV** from the Samsung store, registered at
+  `ss-iptv.com` — built for these panels and uses AVPlay correctly.

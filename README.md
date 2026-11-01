@@ -171,6 +171,26 @@ python3 tools/video_probe.py playlists/kids.m3u reports/video-kids.csv
 Variant selection skips audio-only renditions - some masters list one at the lowest bandwidth,
 and picking it made a healthy channel look audio-only.
 
+## Read before changing anything
+
+`docs/NOTES.md` is the engineering log: every trap, every probe bug that produced a wrong
+answer, and why channels fail on this TV. `AGENTS.md` is the short version. Two facts explain
+most of the design:
+
+- **A Tizen 2.3 web app only receives arrows, OK and BACK.** Numbers and colour keys never
+  arrive unless the app registers them, which needs a privilege this TV rejects at install.
+- **HTTP 200 does not mean playable.** Verify a video stream; see `tools/video_probe.py`.
+  Channels fail here mainly because of AES-128 encryption, ad-stitched FAST hosts, ECDSA
+  certificates or US geo-locks — not bitrate.
+
+Before shipping:
+
+```bash
+python3 tools/build.py
+node tools/test_keys.js       # drives the built app with real remote keys
+node tools/dump_sections.js   # prints the section order per tab
+```
+
 ## Credits
 
 - Channel data: [iptv-org](https://github.com/iptv-org/iptv) (public domain).
