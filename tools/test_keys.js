@@ -50,12 +50,17 @@ const sandbox = {
   },
   setTimeout, clearTimeout, console, JSON, Math, Date,
 };
-const fake = { opens: 0, stops: 0, closes: 0 };
+const fake = { opens: 0, stops: 0, closes: 0, fail: true };
 sandbox.webapis = {
   avplay: {
     open() { fake.opens++; },
     setListener() {},
-    prepareAsync(onOk, onErr) { setTimeout(function () { if (onErr) onErr({ name: 'stub_fail' }); }, 20); },
+    prepareAsync(onOk, onErr) {
+      setTimeout(function () {
+        if (fake.fail) { if (onErr) onErr({ name: 'stub_fail' }); }
+        else if (onOk) onOk();
+      }, 20);
+    },
     play() {},
     stop() { fake.stops++; },
     close() { fake.closes++; },
@@ -159,7 +164,25 @@ console.log(failures === 0 ? '\nall checks passed' : '\n' + failures + ' checks 
   if (fake.opens === 1) console.log('ok   one press opens one channel');
   else { console.log('FAIL expected 1 open, saw ' + fake.opens); failures++; }
 
-  // 2. stop, then press OK immediately: the open must be deferred, not dropped
+  // 2. switch straight from one channel to another while the first is still open
+  //    (this is the o2 / s0 case that hung on the TV: no BACK was ever pressed)
+  fake.fail = false;                     // first channel is genuinely playing
+  await wait(1500);                      // let any pending cooldown expire
+  press(13);
+  await wait(700);                       // opens and prepares successfully
+  fake.opens = 0;
+  press(13);                             // switch channel without pressing BACK
+  await wait(300);
+  const duringSwitch = fake.opens;
+  await wait(1400);
+  const afterSwitch = fake.opens;
+  fake.fail = true;
+  if (duringSwitch === 0) console.log('ok   channel-to-channel switch is deferred');
+  else { console.log('FAIL switch opened immediately (' + duringSwitch + ')'); failures++; }
+  if (afterSwitch === 1) console.log('ok   switched channel opened once');
+  else { console.log('FAIL switch opened ' + afterSwitch + ' times'); failures++; }
+
+  // 3. stop, then press OK immediately: the open must be deferred, not dropped
   press(10009);
   await wait(30);
   fake.opens = 0;
@@ -172,7 +195,7 @@ console.log(failures === 0 ? '\nall checks passed' : '\n' + failures + ' checks 
   if (fake.opens === 1) console.log('ok   deferred open ran exactly once');
   else { console.log('FAIL expected 1 deferred open, saw ' + fake.opens); failures++; }
 
-  // 3. the failure path still reports and marks
+  // 4. the failure path still reports and marks
   const msg = elements['msg'].textContent || '';
   if (msg.indexOf('Cannot open stream') !== -1 || msg.indexOf('No response') !== -1) {
     console.log('ok   failure reported to the user');

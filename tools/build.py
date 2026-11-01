@@ -372,6 +372,7 @@ function playAv(c) {
      dead channel swallow every later selection. */
   connectTimer = setTimeout(function () {
     if (!pendingOpen) return;
+    log('watchdog');           /* if this never appears, the decoder blocked the thread */
     pendingOpen = false;
     try { AV.stop(); } catch (e) {}
     try { AV.close(); } catch (e) {}
@@ -400,6 +401,7 @@ function playAv(c) {
     });
     log('prepare:before');
     AV.prepareAsync(function () {
+      log('prepared-ok');
       settled();
       log('prepared');
       msg.textContent = '';
@@ -408,6 +410,7 @@ function playAv(c) {
       try { AV.setSelectTrack('AUDIO', 0); } catch (e) {}
       try { AV.play(); } catch (e) { msg.textContent = 'Play error: ' + e; }
     }, function (e) {
+      log('prepared-err');
       settled();
       markBad(c.name, (e && e.name) || 'prepare failed');
       msg.textContent = 'Cannot open stream (' + (e && e.name ? e.name : e) + ')';
@@ -424,6 +427,9 @@ function playAv(c) {
 function startChannel() {
   var c = CH[idx];
   if (!c) return;
+  /* note whether a player was live BEFORE tearing it down: cancelPending clears usingAv,
+     which is exactly the flag the cooldown needs */
+  var wasLive = usingAv || playing;
   cancelPending();
   playing = true;
   document.documentElement.className = 'playing';
@@ -435,6 +441,9 @@ function startChannel() {
   /* let the previous teardown settle, and never open into a player that was just closed:
      pressing OK straight after BACK waits the cooldown out instead of wedging the decoder */
   var now = new Date().getTime();
+  /* a player that is still open must be given the same quiet gap we give a stopped one;
+     pressing OK on a second channel while the first plays was the case that hung */
+  if (wasLive) noOpenUntil = Math.max(noOpenUntil, now + COOLDOWN_MS);
   var wait = Math.max(200, noOpenUntil - now);
   var myGen = ++openGen;
   if (wait > 250) hintEl.textContent = 'waiting for the player\u2026';
