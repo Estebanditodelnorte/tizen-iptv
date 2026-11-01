@@ -51,6 +51,11 @@ def parse(path):
             cur = {}
     return channels
 
+ratings = {}
+_ratings_path = os.path.join(PLAYLISTS, 'ratings.json')
+if os.path.exists(_ratings_path):
+    ratings = json.load(open(_ratings_path, encoding='utf-8'))
+
 data = {}
 for tab, _label in TABS:
     path = os.path.join(PLAYLISTS, tab + '.m3u')
@@ -110,7 +115,7 @@ template = r'''<!DOCTYPE html>
        padding:0 30px;z-index:6}
   #hint{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:14px;color:#9fb3d9;
         text-shadow:0 1px 3px #000;z-index:6}
-  #cat{position:absolute;top:0;left:44%;right:0;bottom:0;background:#0b0d12;z-index:9;
+  #cat{position:absolute;top:0;left:0;right:0;bottom:0;background:#0b0d12;z-index:20;
        display:none;padding:22px 30px;overflow-y:auto}
   #cat h2{font-size:18px;color:#9fb3d9;margin:0 0 4px}
   #cat .sub{font-size:14px;color:#5f7ba8;margin:0 0 14px}
@@ -133,6 +138,7 @@ var SOURCES = __DATA__;
 var TABS = __TABS__;
 var LABELS = __LABELS__;
 var SECTION_ORDER = __ORDER__;
+var DEFAULT_RATE = __RATES__;
 var tab = 0, CH = [], idx = 0, rows = [], playing = false, usingAv = false, listVisible = true, hideTimer = null;
 var RATE = {}, testing = false, testIdx = 0, testTimer = null;
 var connectTimer = null, pendingOpen = false;
@@ -349,20 +355,21 @@ function startChannel() {
 /* Rating replaces the old star/broken flags: 3 = very good (top), 2 = good, 1 = bad (bottom),
    absent = unrated, which keeps its category. */
 function loadRate() {
+  var r = {}, k;
+  for (k in DEFAULT_RATE) r[k] = DEFAULT_RATE[k];      /* baked in from playlists/ratings.json */
   try {
     var raw = localStorage.getItem('iptv-rate');
-    if (raw) return JSON.parse(raw);
-    var r = {}, k;
-    try {
-      var f = JSON.parse(localStorage.getItem('iptv-fav') || '{}');
-      for (k in f) r[k] = 3;
-    } catch (e) {}
-    try {
-      var b = JSON.parse(localStorage.getItem('iptv-bad-' + TABS[tab]) || '{}');
-      for (k in b) r[k] = 1;
-    } catch (e) {}
-    return r;
-  } catch (e) { return {}; }
+    if (raw) {
+      var s = JSON.parse(raw);
+      for (k in s) { if (s[k] === 0) delete r[k]; else r[k] = s[k]; }
+      return r;
+    }
+    var f = JSON.parse(localStorage.getItem('iptv-fav') || '{}');
+    for (k in f) r[k] = 3;
+    var b = JSON.parse(localStorage.getItem('iptv-bad-' + TABS[tab]) || '{}');
+    for (k in b) r[k] = 1;
+  } catch (e) {}
+  return r;
 }
 function saveRate() {
   try { localStorage.setItem('iptv-rate', JSON.stringify(RATE)); } catch (e) {}
@@ -472,11 +479,13 @@ function applyAction() {
   if (actIdx === 0) { RATE[name] = 3; hintEl.textContent = name + '  \u2605\u2605 very good'; }
   else if (actIdx === 1) { RATE[name] = 2; hintEl.textContent = name + '  \u2605 good'; }
   else if (actIdx === 2) { RATE[name] = 1; hintEl.textContent = name + '  \u2717 bad'; }
-  else if (actIdx === 3) { delete RATE[name]; hintEl.textContent = name + '  rating cleared'; }
-  saveRate();
+  else if (actIdx === 3) { RATE[name] = 0; hintEl.textContent = name + '  rating cleared'; }
   closeActions();
-  render(true);
-  focusName(name);
+  if (actIdx <= 3) {          /* Cancel must not rewrite the stored map */
+    saveRate();
+    render(true);
+    focusName(name);
+  }
 }
 
 function loadCat() {
@@ -599,7 +608,8 @@ html = (template
         .replace('__DATA__', json.dumps(data, ensure_ascii=False))
         .replace('__TABS__', json.dumps(ids))
         .replace('__LABELS__', json.dumps(labels))
-        .replace('__ORDER__', json.dumps(SECTION_ORDER)))
+        .replace('__ORDER__', json.dumps(SECTION_ORDER))
+        .replace('__RATES__', json.dumps(ratings)))
 open(os.path.join(APP, 'index.html'), 'w', encoding='utf-8').write(html)
 
 total = sum(len(v) for v in data.values())

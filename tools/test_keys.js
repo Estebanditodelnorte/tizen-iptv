@@ -70,7 +70,11 @@ step('digit 3 assigns Kids', () => {
   if (Object.values(stored('iptv-cat')).indexOf('Kids') === -1) throw new Error('no Kids mapping stored');
 });
 
-const rated = () => Object.values(stored('iptv-rate'))[0];
+function selectedName() {
+  const sel = elements['items'].children.find((c) => c.className === 'ch sel');
+  return sel ? sel.textContent.replace(/^[^A-Za-z0-9]+/, '') : '';
+}
+const rated = () => stored('iptv-rate')[selectedName()];
 
 step('BACK + OK rates Very good', () => {
   press(10009); press(13);
@@ -86,12 +90,13 @@ step('BACK + DOWN x2 + OK rates Bad', () => {
 });
 step('BACK + DOWN x3 + OK clears the rating', () => {
   press(10009); press(40); press(40); press(40); press(13);
-  if (Object.keys(stored('iptv-rate')).length !== 0) throw new Error('rating not cleared');
+  if (rated() !== 0) throw new Error('expected 0, got ' + rated());
 });
 step('Cancel changes nothing', () => {
-  const before = JSON.stringify(stored('iptv-rate'));
+  const name = selectedName();
+  const before = stored('iptv-rate')[name];
   press(10009); press(40); press(40); press(40); press(40); press(13);
-  if (JSON.stringify(stored('iptv-rate')) !== before) throw new Error('cancel changed state');
+  if (stored('iptv-rate')[name] !== before) throw new Error('cancel changed state');
 });
 step('OK plays without throwing', () => press(13));
 step('BACK stops playback', () => press(10009));
