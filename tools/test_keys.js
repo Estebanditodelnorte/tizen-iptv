@@ -98,6 +98,15 @@ step('Cancel changes nothing', () => {
   press(10009); press(40); press(40); press(40); press(40); press(13);
   if (stored('iptv-rate')[name] !== before) throw new Error('cancel changed state');
 });
+step('menu can move a channel into a category', () => {
+  const name = selectedName();
+  press(10009);                       // open menu
+  for (let i = 0; i < 5; i++) press(40);   // past ratings, header row, onto first category
+  press(13);
+  const moved = stored('iptv-cat')[name];
+  if (!moved) throw new Error('no category recorded for ' + name);
+  if (stored('iptv-rate')[name]) throw new Error('rating should be cleared by a move');
+});
 step('OK plays without throwing', () => press(13));
 step('BACK stops playback', () => press(10009));
 step('RIGHT switches list', () => press(39));

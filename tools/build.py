@@ -469,16 +469,21 @@ var actMode = false, actIdx = 0;
 function ratingOf(name) { return RATE[name] || 0; }
 function actionList() {
   if (!CH[idx]) return [];
-  var r = ratingOf(CH[idx].name);
-  return [
-    (r === 3 ? '\u2022 ' : '   ') + '\u2605\u2605  Very good  (top of the list)',
-    (r === 2 ? '\u2022 ' : '   ') + '\u2605   Good',
-    (r === 1 ? '\u2022 ' : '   ') + '\u2717   Bad       (bottom of the list)',
-    '   Clear rating',
-    '   Cancel'
-  ];
+  var n = CH[idx].name;
+  var r = ratingOf(n);
+  var opts = [];
+  opts.push((r === 3 ? '\u2022 ' : '   ') + '\u2605\u2605  Very good   (top of the list)');
+  opts.push((r === 2 ? '\u2022 ' : '   ') + '\u2605   Good');
+  opts.push((r === 1 ? '\u2022 ' : '   ') + '\u2717   Bad        (bottom of the list)');
+  opts.push('   Clear rating');
+  opts.push('   \u2014 move to a category \u2014');
+  for (var i = 0; i < CATS.length; i++) {
+    var on = (CAT[n] === CATS[i] && !ratingOf(n)) ? '\u2022 ' : '   ';
+    opts.push(on + '   ' + CATS[i]);
+  }
+  opts.push('   Cancel');
+  return opts;
 }
-/* BACK while browsing opens this: an explicit menu, so nothing is a hidden shortcut. */
 function openActions() {
   if (!CH[idx]) return;
   actMode = true;
@@ -495,6 +500,12 @@ function renderActions() {
   }
   box.innerHTML = html;
   box.style.display = 'block';
+  var sel = box.querySelector('.cat.sel');
+  if (sel && sel.offsetTop !== undefined) {
+    var top = sel.offsetTop, st = box.scrollTop, ch = box.clientHeight;
+    if (top < st) box.scrollTop = top - 12;
+    else if (top + sel.offsetHeight > st + ch) box.scrollTop = top + sel.offsetHeight - ch + 12;
+  }
 }
 function closeActions() {
   actMode = false;
@@ -506,12 +517,19 @@ function applyAction() {
   else if (actIdx === 1) { RATE[name] = 2; hintEl.textContent = name + '  \u2605 good'; }
   else if (actIdx === 2) { RATE[name] = 1; hintEl.textContent = name + '  \u2717 bad'; }
   else if (actIdx === 3) { RATE[name] = 0; hintEl.textContent = name + '  rating cleared'; }
-  closeActions();
-  if (actIdx <= 3) {          /* Cancel must not rewrite the stored map */
-    saveRate();
-    render(true);
-    focusName(name);
+  else if (actIdx >= 5 && actIdx < 5 + CATS.length) {
+    CAT[name] = CATS[actIdx - 5];
+    RATE[name] = 0;                       /* a move must beat any rating, or it would not show */
+    saveCat();
+    hintEl.textContent = name + '  \u2192  ' + CAT[name];
+  } else {
+    closeActions();                        /* header row or Cancel: change nothing */
+    return;
   }
+  saveRate();
+  closeActions();
+  render(true);
+  focusName(name);
 }
 
 function loadCat() {
