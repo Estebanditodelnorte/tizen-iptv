@@ -154,12 +154,20 @@ function buildTabs() {
   }
 }
 function render() {
-  CH = SOURCES[TABS[tab]] || [];
-  idx = 0; rows = []; items.innerHTML = ''; painted = -1;
+  var src = SOURCES[TABS[tab]] || [];
   BAD = loadBad();
+  var normal = [], broken = [];
+  for (var i = 0; i < src.length; i++) {
+    if (BAD[src[i].name]) broken.push(src[i]); else normal.push(src[i]);
+  }
+  /* channels that failed to play sink to a BROKEN section at the end */
+  CH = normal.concat(broken);
+  idx = 0; rows = []; items.innerHTML = ''; painted = -1;
   var lastGroup = null;
   for (var i = 0; i < CH.length; i++) {
-    var gname = CAT[CH[i].name] || CH[i].group;
+    var gname = (i >= normal.length)
+      ? 'BROKEN \u2014 did not play'
+      : (CAT[CH[i].name] || CH[i].group);
     if (gname !== lastGroup) {
       lastGroup = gname;
       var g = document.createElement('div');
@@ -252,6 +260,7 @@ function playAv(c) {
     try { AV.stop(); } catch (e) {}
     try { AV.close(); } catch (e) {}
     usingAv = false;
+    markBad(c.name, 'no response');
     msg.textContent = 'No response from this stream';
   }, 12000);
   function settled() {
@@ -266,7 +275,10 @@ function playAv(c) {
       onbufferingprogress: function (p) { msg.textContent = 'Buffering ' + p + '%'; },
       onbufferingcomplete: function () { msg.textContent = ''; },
       onstreamcompleted: function () { msg.textContent = 'Stream ended'; },
-      onerror: function (e) { msg.textContent = 'Stream failed (' + (e && e.name ? e.name : e) + ')'; }
+      onerror: function (e) {
+        markBad(c.name, (e && e.name) || 'stream failed');
+        msg.textContent = 'Stream failed (' + (e && e.name ? e.name : e) + ')';
+      }
     });
     AV.prepareAsync(function () {
       settled();
@@ -277,12 +289,14 @@ function playAv(c) {
       try { AV.play(); } catch (e) { msg.textContent = 'Play error: ' + e; }
     }, function (e) {
       settled();
+      markBad(c.name, (e && e.name) || 'prepare failed');
       msg.textContent = 'Cannot open stream (' + (e && e.name ? e.name : e) + ')';
       try { AV.close(); } catch (x) {}
       usingAv = false;
     });
   } catch (e) {
     settled();
+    markBad(c.name, 'avplay error');
     msg.textContent = 'AVPlay error: ' + e;
     usingAv = false;
   }
