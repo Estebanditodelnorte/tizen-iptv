@@ -119,6 +119,22 @@ and 65 of 159 learn — 1,048 channels down to 684. Mexico and PUBLIC were alrea
 Two caveats: a channel can be mislabelled upstream (Canada One is listed as English but
 broadcasts Punjabi, so it was removed by hand), and dropping by language also drops silent or
 music channels whose only audio is not speech.
+## Slow channels
+
+Reachability is not speed. `tools/speed_probe.py` measures each channel for real: it follows
+master -> variant -> first segment and reports time-to-first-byte, segment size and throughput
+(kbps), plus the bandwidth the manifest advertises.
+
+```bash
+python3 tools/speed_probe.py playlists/sports.m3u reports/speed-sports.csv
+python3 tools/apply_speed.py playlists/sports.m3u reports/speed-sports.csv
+```
+
+`apply_speed.py` removes anything under 600 kbps (or that failed outright), and moves 600-1000
+kbps into a "Sports (slow)" group at the end of the list instead of deleting it - slow is a
+judgement call, broken is not. Run it on the network the TV uses; the numbers are that
+machine's view of the internet.
+
 ## Credits
 
 - Channel data: [iptv-org](https://github.com/iptv-org/iptv) (public domain).
