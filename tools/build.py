@@ -83,6 +83,8 @@ template = r'''<!DOCTYPE html>
   .ch{padding:7px 11px;border-radius:6px;font-size:16px;white-space:nowrap;overflow:hidden;
       text-overflow:ellipsis}
   .ch.sel{background:#2b6cf6;color:#fff}
+  .ch.bad{color:#8a5a5a}
+  .ch.bad.sel{background:#7a2b2b;color:#fff}
   #idle{position:absolute;top:0;left:44%;right:0;bottom:0;display:-webkit-box;
         -webkit-box-align:center;-webkit-box-pack:center;text-align:center;
         font-size:18px;color:#6d82a6;padding:0 30px;z-index:4}
@@ -107,6 +109,7 @@ var SOURCES = __DATA__;
 var TABS = __TABS__;
 var LABELS = __LABELS__;
 var tab = 0, CH = [], idx = 0, rows = [], playing = false, usingAv = false, listVisible = true, hideTimer = null;
+var BAD = {}, testing = false, testIdx = 0, testTimer = null;
 var items = document.getElementById('items');
 var tabsEl = document.getElementById('tabs');
 var panel = document.getElementById('panel');
@@ -131,6 +134,7 @@ function buildTabs() {
 function render() {
   CH = SOURCES[TABS[tab]] || [];
   idx = 0; rows = []; items.innerHTML = '';
+  BAD = loadBad();
   var lastGroup = null;
   for (var i = 0; i < CH.length; i++) {
     if (CH[i].group !== lastGroup) {
@@ -142,7 +146,7 @@ function render() {
     }
     var d = document.createElement('div');
     d.className = 'ch';
-    d.textContent = CH[i].name;
+    d.textContent = (BAD[CH[i].name] ? '\u2717 ' : '') + CH[i].name;
     items.appendChild(d);
     rows.push(d);
   }
@@ -208,6 +212,9 @@ function playAv(c) {
     });
     AV.prepareAsync(function () {
       msg.textContent = '';
+      /* Some streams carry audio as a separate HLS rendition (EXT-X-MEDIA); older Tizen
+         firmware then plays video silently. Ask for the first audio track explicitly. */
+      try { AV.setSelectTrack('AUDIO', 0); } catch (e) {}
       try { AV.play(); } catch (e) { msg.textContent = 'Play error: ' + e; }
     }, function (e) {
       msg.textContent = 'Cannot open stream (' + (e && e.name ? e.name : e) + ')';
@@ -231,14 +238,79 @@ function startChannel() {
   hideTimer = setTimeout(hideList, 4000);
 }
 
+function loadBad() {
+  try { return JSON.parse(localStorage.getItem('iptv-bad-' + TABS[tab]) || '{}'); } catch (e) { return {}; }
+}
+function saveBad(o) {
+  try { localStorage.setItem('iptv-bad-' + TABS[tab], JSON.stringify(o)); } catch (e) {}
+}
+function markBad(name, reason) {
+  BAD[name] = reason || 'fail';
+  saveBad(BAD);
+}
+/* Walk every channel in the current tab, open it, and record whether the decoder accepts it.
+   This is the only test that reflects what the TV can actually play. */
+function startTest() {
+  if (testing) return;
+  if (playing) stopPlayback();
+  testing = true; testIdx = 0;
+  BAD = loadBad();
+  testStep();
+}
+function testStep() {
+  if (testIdx >= CH.length) {
+    testing = false;
+    nowEl.textContent = ''; msg.textContent = ''; hintEl.textContent = '';
+    render();
+    return;
+  }
+  var c = CH[testIdx];
+  nowEl.textContent = 'TESTING ' + (testIdx + 1) + ' / ' + CH.length;
+  hintEl.textContent = c.name + '  \u2014  GREEN to stop';
+  var done = false;
+  function finish(ok, reason) {
+    if (done) return;
+    done = true;
+    if (testTimer) { clearTimeout(testTimer); testTimer = null; }
+    if (usingAv && AV) { try { AV.stop(); } catch (e) {} try { AV.close(); } catch (e) {} usingAv = false; }
+    if (!ok) markBad(c.name, reason);
+    testIdx++;
+    setTimeout(testStep, 250);
+  }
+  testTimer = setTimeout(function () { finish(false, 'timeout'); }, 9000);
+  try {
+    usingAv = true;
+    AV.open(c.url);
+    AV.setListener({ onerror: function (e) { finish(false, (e && e.name) || 'error'); } });
+    AV.prepareAsync(function () { finish(true); },
+                    function (e) { finish(false, (e && e.name) || 'prepare_failed'); });
+  } catch (e) {
+    finish(false, 'open_failed');
+  }
+}
+
 document.addEventListener('keydown', function (e) {
   var k = e.keyCode, handled = true;
+  if (testing) {
+    if (k === 404) {
+      testing = false;
+      if (testTimer) { clearTimeout(testTimer); testTimer = null; }
+      try { AV.stop(); } catch (x) {}
+      try { AV.close(); } catch (x) {}
+      usingAv = false;
+      nowEl.textContent = ''; hintEl.textContent = '';
+      render();
+    }
+    e.preventDefault();
+    return;
+  }
   if (!listVisible) { showList(); e.preventDefault(); return; }
   if (k === 37) { tab = (tab + TABS.length - 1) % TABS.length; render(); }
   else if (k === 39) { tab = (tab + 1) % TABS.length; render(); }
   else if (k === 38) { idx = Math.max(0, idx - 1); paint(); }
   else if (k === 40) { idx = Math.min(CH.length - 1, idx + 1); paint(); }
   else if (k === 13 || k === 415) { startChannel(); }
+  else if (k === 404) { startTest(); }
   else if (k === 10009 || k === 27 || k === 8) { stopPlayback(); }
   else { handled = false; }
   if (handled) e.preventDefault();

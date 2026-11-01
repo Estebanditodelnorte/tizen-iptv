@@ -1,0 +1,108 @@
+name,status,reason,url
+3ABN Canada (720p),ok,ts,https://3abn.bozztv.com/3abncanada/3ABN/master.m3u8
+5AAB TV (720p) [Not 24/7],ok,ts,http://158.69.124.9:1935/5aabtv/5aabtv/playlist.m3u8
+Amazing Discoveries TV (720p),ok,ts,https://uni01rtmp.tulix.tv/amazingdtv/amazingdtv/playlist.m3u8
+Az Star TV (1080p),ok,ts,https://live.livestreamtv.ca/azstar/amlst:azstar/playlist.m3u8
+Azan TV,ok,ts,https://dbcanada.sonarbanglatv.com/azantv/atv/index.m3u8
+C Malayalam TV (1080p),ok,ts,https://2-fss-2.streamhoster.com/pl_120/206508-3261972-1/playlist.m3u8
+Canada One (720p) [Not 24/7],ok,ts,http://cdn8.live247stream.com/canadaone/tv/playlist.m3u8
+CBC News Network (1080p),fail,http_403,https://d2ny9lo79ujali.cloudfront.net/CBC_News_International.m3u8
+CityNews Calgary (720p),ok,ts,https://citynewsregional.akamaized.net/hls/live/1024053/Regional_Live_8/master.m3u8
+CityNews Edmonton,ok,ts,https://citynewsregional.akamaized.net/hls/live/1024053/Regional_Live_8/Video-2Mbps.m3u8
+CityNews Toronto (720p),ok,ts,https://citynewsregional.akamaized.net/hls/live/1024052/Regional_Live_7/master.m3u8
+CityNews Vancouver (720p),ok,ts,https://citynewsregional.akamaized.net/hls/live/1024054/Regional_Live_9/master.m3u8
+CKNO-FM (616p),ok,ts,https://videostream.jpbgdigital.com/NOWTV.m3u8
+DesheBideshe TV,ok,ts,https://dbcanada.sonarbanglatv.com/deshebideshe/dbtv/index.m3u8
+Deshi TV (720p),ok,ts,https://deshitv.deshitv24.net/live/myStream/playlist.m3u8
+Doyel TV,ok,ts,https://3d46w.doyeltv.com/memfs/aa3aa6f7-ec12-41a2-8183-a891e157bbf8.m3u8
+Dukh Nivaran (720p) [Not 24/7],ok,ts,http://cdn12.henico.net:8080/live/dncal/index.m3u8
+Eawaz TV (720p) [Not 24/7],ok,ts,https://streamer12.vdn.dstreamone.net/saazoawaz/saazoawaz/playlist.m3u8
+EET TV (1080p) [Not 24/7],ok,ts,https://eu.streamjo.com/eetlive/eettv.m3u8
+Erfan Halgheh TV (720p),ok,ts,https://hls.erfanhalgheh.live/hls/stream.m3u8
+Game+ (720p),ok,ts,https://a-cdn.klowdtv.com/live2/fntsy_720p/playlist.m3u8
+Gaunda Punjab TV (720p),ok,ts,http://cdn6.live247stream.com/gaundapunjab/tv/playlist.m3u8
+GTN Canada (1080i) [Geo-blocked],ok,ts,https://streamer12.vdn.dstreamone.net/carishowtime/showtime/chunks.m3u8
+GurSikh Sabha TV (720p) [Not 24/7],ok,ts,http://cdn12.henico.net:8080/live/gsctv/index.m3u8
+Hamdard TV (1080p),ok,ts,https://tv.hamdardtv.com/hamdard/index.m3u8
+HauntTV CA (720p),fail,http_414,https://jmp2.uk/plu-63934c218ef524000757b122.m3u8
+Hyder TV (720p),ok,ts,https://cdn.live247stream.com/hyder/tv/playlist.m3u8
+Ici Radio-Canada Tele CBAFT-DT [Geo-blocked],ok,ts,https://rcavlive.akamaized.net/hls/live/704014/cancbaft/master.m3u8
+Ici Radio-Canada Tele CBFT-DT (1080p) [Geo-blocked],ok,ts,https://rcavlive-dai.akamaized.net/hls/live/696614/cancbftprem/master.m3u8
+Ici Radio-Canada Tele CBKFT-DT [Geo-blocked],ok,ts,https://rcavlive.akamaized.net/hls/live/704019/cancbkft/master.m3u8
+Ici Radio-Canada Tele CBLFT-DT [Geo-blocked],ok,ts,https://rcavlive.akamaized.net/hls/live/704022/cancblft/master.m3u8
+Ici Radio-Canada Tele CBOFT-DT [Geo-blocked],ok,ts,https://rcavlive.akamaized.net/hls/live/664046/cancboft/master.m3u8
+Ici Radio-Canada Tele CBUFT-DT [Geo-blocked],ok,ts,https://rcavlive.akamaized.net/hls/live/704017/cancbuft/master.m3u8
+Ici Radio-Canada Tele CBVT-DT [Geo-blocked],ok,ts,https://rcavlive.akamaized.net/hls/live/664045/cancbvt/master.m3u8
+Ici Radio-Canada Tele CBWFT-DT [Geo-blocked],ok,ts,https://rcavlive.akamaized.net/hls/live/704018/cancbwft/master.m3u8
+Ici Radio-Canada Tele CBXFT-DT [Geo-blocked],ok,ts,https://rcavlive.akamaized.net/hls/live/704020/cancbxft/master.m3u8
+Ici Radio-Canada Tele CFHD-DT (720p),ok,ts,https://amdici.akamaized.net/hls/live/873426/ICI-Live-Stream/master.m3u8
+Ici Radio-Canada Tele CJBR-DT [Geo-blocked],ok,ts,https://rcavlive.akamaized.net/hls/live/704024/cancjbr/master.m3u8
+Ici Radio-Canada Tele CKSH-DT [Geo-blocked],ok,ts,https://rcavlive.akamaized.net/hls/live/704016/cancksh/master.m3u8
+Ici Radio-Canada Tele CKTM-DT [Geo-blocked],ok,ts,https://rcavlive.akamaized.net/hls/live/704021/cancktm/master.m3u8
+Ici Radio-Canada Tele CKTV-DT [Geo-blocked],ok,ts,https://rcavlive.akamaized.net/hls/live/704023/cancktv/master.m3u8
+ICnet 1,ok,ts,https://icnet1hls.wns.live/hls/stream.m3u8
+IIPC TV (720p),ok,ts,https://rpn.bozztv.com/dvrfl03/iipctv/index.m3u8
+Knowledge Network (720p) [Geo-blocked],ok,ts,https://d1wal6k3d7ssin.cloudfront.net/out/v1/ea91db0906c847a4931b46a9ec36e77b/index.m3u8
+LCN [Geo-blocked],ok,ts,https://tvalive.akamaized.net/hls/live/2014213/tvan01/tvan01.m3u8
+Love Nature (1080p),ok,ts,https://aegis-cloudfront-1.tubi.video/6d6d0f24-8445-4b4c-bdf6-44f9e38beaa4/playlist.m3u8
+Love Nature 4K (2160p) [Geo-blocked],ok,ts,https://pb-ehs1glsha1juy.akamaized.net/Love_Nature_4K.m3u8
+Love Nature HD (1080p),ok,ts,https://mumbai-edge.smartplaytv.in/LoveNature/index.m3u8
+MHZ,ok,ts,https://mhz-samsung-linear-ca.samsung.wurl.tv/playlist.m3u8
+Montreal Greek TV (480p),fail,http_404,http://live.greektv.ca/hls1/greektv.m3u8
+Movie Music by Stingray (1080p),ok,ts,https://lotus.stingray.com/manifest/cmusic-cme004-montreal/samsungtvplus/master.m3u8
+NACTV,fail,http_404,https://stream2.pivotalelements.com/memfs/2d2e1038-9eb2-44df-a9b9-109de5752f3b_output_0.m3u8
+NTV (Canada) CJON-DT (480p),ok,ts,https://2-fss-1.streamhoster.com/pl_122/201748-1431018-1/playlist.m3u8
+NTV+,ok,ts,https://2-fss-1.streamhoster.com/pl_122/201748-1431018-1/chunklist.m3u8
+Ontario Parliamentary Network (720p),ok,ts,https://origin-http-delivery.isilive.ca/live/_definst_/ontla/house-en/playlist.m3u8
+Pamir TV (1080p) [Not 24/7],ok,ts,http://live.stream.cdn.pamirtv.com/ptv/d0dbe915091d400bd8ee7f27f0791303.sdp/index.m3u8
+Pardesi TV (720p),ok,ts,http://stream.pardesitv.online/pardesi/tracks-v1a1/mono.m3u8
+Prime Asia TV (1080p),ok,ts,http://primeasia.selfip.net/Samsung/index.m3u8
+Probashi TV News (1080p),ok,ts,http://158.69.24.53:8080/probashi_tv/index.m3u8
+PTC Punjabi Canada (1080p),ok,ts,https://stream.ottlive.co.in/ptccanada/index.m3u8
+Qello Concerts by Stingray (1080p),ok,ts,https://lotus.stingray.com/manifest/qello-qello001-montreal/samsungtvplus/master.m3u8
+Quo Vadis TV (720p),ok,ts,https://tgn.bozztv.com/qvtv/qvtv-web/playlist.m3u8
+Radio Tele Evangile Sans Limite,ok,ts,https://5790d294af2dc.streamlock.net/8124/8124/chunklist.m3u8
+Sardari TV (1080p) [Not 24/7],ok,ts,http://158.69.124.9:1935/sardaritv/sardaritv/playlist.m3u8
+Savoir media CFTU-DT (360p),ok,ts,https://hls.savoir.media/live/stream.m3u8
+Sikh Spiritual Centre Rexdale (720p),ok,ts,https://cdn12.henico.net:8443/live/ssct/index.m3u8
+Sooriyan TV (1080p),fail,http_503,https://live20.bozztv.com/giatv/giatv-Infinittyott/Infinittyott/playlist.m3u8
+Stingray Cityscapes (1080p),fail,drm,https://aka-live1050.delivery.roku.com/7572d640-7373-4137-8b14-a3afff395349/t2-origin/out/v1/live.m3u8
+Stingray Classic Rock (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-101ads-montreal/samsungtvplus/master.m3u8
+Stingray Classica (1080p),ok,ts,https://lotus.stingray.com/manifest/classica-cla008-montreal/samsungtvplus/master.m3u8
+Stingray Cozy Cafe (1080p),fail,drm,https://aka-live1050.delivery.roku.com/372c813e-1fb9-41d4-a4d0-5fbd803659c5/t2-origin/out/v1/live.m3u8
+Stingray DJAZZ (1080p),ok,ts,https://lotus.stingray.com/manifest/djazz-djaads-montreal/samsungtvplus/master.m3u8
+Stingray Easy Listening (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-137ads-montreal/samsungtvplus/master.m3u8
+Stingray Everything '80s (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-128ads-montreal/samsungtvplus/master.m3u8
+Stingray Flashback 70's (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-115ads-montreal/samsungtvplus/master.m3u8
+Stingray Hit List (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-107ads-montreal/samsungtvplus/master.m3u8
+Stingray Holiday Hits (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-155ads-montreal/samsungtvplus/master.m3u8
+Stingray Holidayscapes (1080p),ok,ts,https://d10cyxntpn0bwm.cloudfront.net/master.m3u8
+Stingray Hot Country (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-108ads-montreal/samsungtvplus/master.m3u8
+Stingray iConcerts HD,ok,ts,https://dash4.antik.sk/live/test_stingray_iconcerts_hd_hevc50/playlist.m3u8
+Stingray Jukebox Oldies (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-021ads-montreal/samsungtvplus/master.m3u8
+Stingray Karaoke (1080p),ok,ts,https://lotus.stingray.com/manifest/karaoke-kar000-montreal/samsungtvplus/master.m3u8
+Stingray Naturescape (1080p),ok,ts,https://lotus.stingray.com/manifest/naturescape-a003-montreal/samsungtvplus/master.m3u8
+Stingray Nothin' But 90s (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-142ads-montreal/samsungtvplus/master.m3u8
+Stingray Pop Adult (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-104ads-montreal/samsungtvplus/master.m3u8
+Stingray Remember the 80s,ok,ts,https://d39g1vxj2ef6in.cloudfront.net/v1/manifest/3fec3e5cac39a52b2132f9c66c83dae043dc17d4/prod-rakuten-stitched/68cc5f97-cf6c-4ff7-9125-f56f272dbcb6/1.m3u8
+Stingray Rock Alternative (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-102ads-montreal/samsungtvplus/master.m3u8
+Stingray Romance Latino (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-202ads-montreal/samsungtvplus/master.m3u8
+Stingray Smooth Jazz (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-140ads-montreal/samsungtvplus/master.m3u8
+Stingray Soul Storm (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-134ads-montreal/samsungtvplus/master.m3u8
+Stingray The Spa (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-122ads-montreal/samsungtvplus/master.m3u8
+Stingray Today's K-Pop (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-317ads-montreal/samsungtvplus/master.m3u8
+Stingray Today's Latin Pop (1080p),ok,ts,https://lotus.stingray.com/manifest/ose-190ads-montreal/samsungtvplus/master.m3u8
+TAG TV (1080p) [Not 24/7],ok,ts,http://cdn11.live247stream.com/tag/tv/playlist.m3u8
+TamilVision-TV (1080p),ok,ts,https://live.cmr24.fm/TVI/HD/chunks.m3u8
+The Cowboy Channel Canada (1080p),ok,ts,https://amg17292-amg17292c1-distrotv-us-4170.playouts.now.amagi.tv/playlist/amg17292-tetonridgellc-tetonridgefast-distrotvus/playlist.m3u8
+The Weather Network (720p),fail,http_414,https://jmp2.uk/plu-63da370e2e477400081cf8b6.m3u8
+Toronto 360 TV (720p) [Not 24/7],ok,ts,http://cdn3.toronto360.tv:8081/toronto360/hd/playlist.m3u8
+Total Crime (1080p),ok,ts,https://aegis-cloudfront-1.tubi.video/b062c287-a170-47df-99e4-f5dcd441ee59/playlist.m3u8
+TSC (720p),ok,ts,https://tscamd.akamaized.net/hls/live/503340/TSCLive/master.m3u8
+TSN The Ocho (1080p),ok,ts,https://d3pnbvng3bx2nj.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-rds8g35qfqrnv/TSN_The_Ocho.m3u8
+TV Punjab (720p) [Geo-blocked],ok,ts,https://932y483pdjv8-hls-live.5centscdn.com/stream/deb10bae362f810630ec3abedcae5894.sdp/playlist.m3u8
+TVA (Canada) CFTM-DT [Geo-blocked],ok,ts,https://tvalive-dai01.akamaized.net/Content/HLS/Live/channel(575b93c5-be31-ee34-6285-14620fd14048)/index.m3u8
+TVOKids (720p),fail,bad_segment,https://fastly.live.brightcove.com/6369851620112/us-east-1/15364602001/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJob3N0IjoicGZncmlmLmVncmVzcy50N2M3emwiLCJhY2NvdW50X2lkIjoiMTUzNjQ2MDIwMDEiLCJlaG4iOiJmYXN0bHkubGl2ZS5icmlnaHRjb3ZlLmNvbSIsImlzcyI6ImJsaXZlLXBsYXliYWNrLXNvdXJjZS1hcGkiLCJzdWIiOiJwYXRobWFwdG9rZW4iLCJhdWQiOlsiMTUzNjQ2MDIwMDEiXSwianRpIjoiNjM2OTg1MTYyMDExMiJ9.zRE6fD9JwdbNLUIK5zgvlTAvXCQ3HeeE5p0yH0Pd3-Q/playlist-hls.m3u8
+Uvagut TV (1080p),ok,ts,https://hls.uvagut.tv/hls/uvagut/playlist.m3u8
+Wild TV (1080p),ok,ts,https://dfhsahpa45kk2.cloudfront.net/scheduler/scheduleMaster/476.m3u8
+ZenLIFE by Stingray (1080p),ok,ts,https://lotus.stingray.com/manifest/zenlife-zen001-montreal/samsungtvplus/master.m3u8

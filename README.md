@@ -1,27 +1,28 @@
-﻿# IPTV for old Samsung TVs
+# IPTV for old Samsung TVs
 
 A small IPTV player for **Tizen TVs**, built because the official apps on a 2015 Samsung set
 (UHD JU6800, Tizen 2.3) are slow and the store players either want a subscription or cannot be
 given a playlist.
 
 The whole channel list is **baked into the app**. There is no server, no account, and the TV
-never has to fetch a playlist â€” which matters, because an old Tizen set is bad at exactly that.
+never has to fetch a playlist — which matters, because an old Tizen set is bad at exactly that.
 
 ## What it does
 
-- Six tabs, switched with **â† / â†’**: CANADA, MEXICO, SPORTS, PUBLIC (PBS, BBC, public access),
+- Six tabs, switched with **← / →**: CANADA, MEXICO, SPORTS, PUBLIC (PBS, BBC, public access),
   KIDS (PBS Kids by timezone), LEARN (education and documentary).
-- **â†‘ / â†“** moves through the channel list, **OK** plays, **BACK** stops.
+- **↑ / ↓** moves through the channel list, **OK** plays, **BACK** stops.
+- **GREEN** tests every channel in the current tab and marks the ones the TV cannot play.
 - The list sits on the left and the video on the right; the list auto-hides 4 s into playback
   and comes back on any key.
-- Playback goes through Samsung's **AVPlay** â€” the hardware decoder â€” not the browser's
+- Playback goes through Samsung's **AVPlay** — the hardware decoder — not the browser's
   `<video>` element.
 
 ## Install on the TV
 
 You need Developer Mode on the TV and a computer on the same network.
 
-1. **TV:** Apps â†’ press `1 2 3 4 5` â†’ Developer Mode on â†’ Host PC IP = the computer's address â†’
+1. **TV:** Apps → press `1 2 3 4 5` → Developer Mode on → Host PC IP = the computer's address →
    restart the TV.
 2. **Build the widget:**
 
@@ -33,12 +34,38 @@ You need Developer Mode on the TV and a computer on the same network.
    SDB (`vd_appinstall`), or use [Apps2Samsung](https://github.com/Apps2Samsung/Apps2Samsung),
    which signs and installs in one step.
 
-The signing step is not optional: a retail TV only installs widgets signed for it.
+Signing is not optional: a retail TV only installs widgets signed for that TV.
 
-## Refresh the channels
+## Testing channels, and cleaning the dead ones
 
-The playlists in `playlists/` are snapshots of [iptv-org](https://github.com/iptv-org/iptv)
-lists, filtered to what answered from the maintainer's connection (Canada).
+Public IPTV lists rot constantly. There are two tests, and they answer different questions.
+
+**1. On the TV — press GREEN.** The app walks every channel in the current tab, opens it, and
+waits for the decoder to accept it (9 s each). Failures are marked **✗**, dimmed, and remembered
+in `localStorage`, so they stay marked after a restart. Pressing GREEN during a run stops it.
+This is the only test that reflects what your TV can actually decode.
+
+Expect it to take a while: roughly 10 s per channel, so ~20 minutes for a 107-channel tab and
+over an hour for KIDS (311). Run it per tab, not all at once.
+
+**2. On a computer — `tools/deep_probe.py`.** Follows the HLS chain instead of trusting the
+first URL: master playlist → lowest-bandwidth variant → first segment, rejecting provider DRM
+(`EXT-X-KEY`), missing segments, and segments that are not real media (MPEG-TS `0x47` sync byte
+or an `ftyp` box). It writes a CSV with a reason per channel plus a cleaned playlist.
+
+```bash
+python3 tools/deep_probe.py playlists/canada.m3u report-canada.csv
+#   -> report-canada.csv, playlists/canada-deep.m3u
+python3 tools/build.py
+```
+
+A pass on the computer is not proof (codecs are the TV's call), but a **fail is definite** — so
+run it first, then spend TV time only on what survives.
+
+## Refresh the playlists
+
+`playlists/` holds snapshots of [iptv-org](https://github.com/iptv-org/iptv) lists, filtered to
+what answered from the maintainer's connection (Canada).
 
 ```bash
 # check a public list from your own network and keep only what works there
@@ -48,12 +75,13 @@ python3 tools/probe.py https://iptv-org.github.io/iptv/countries/ca.m3u playlist
 python3 tools/build.py
 ```
 
-Run the probe from the network the TV uses: its result is a geo-blocking test, not just a
-liveness test. Streams come and go, so expect to re-run this every few months.
+Run the probe from the network the TV uses: the result is a geo-blocking test, not just a
+liveness test.
 
 ## Things that cost time to learn (read before editing)
 
-Writing a player for Tizen 2.3 has three traps, all of which produce **sound with no picture**:
+Writing a player for Tizen 2.3 has three traps, and all of them produce **sound with no
+picture**:
 
 1. **`$WEBAPIS/webapis/webapis.js` must be loaded.** Without it `webapis.avplay` is
    `undefined`, the code falls back to HTML5 `<video>`, and HLS plays audio only.
@@ -63,15 +91,21 @@ Writing a player for Tizen 2.3 has three traps, all of which produce **sound wit
 3. **The page must be transparent over the video**, all the way up to `<html>`. The picture is
    drawn *under* the browser; any opaque background anywhere in the chain hides it.
 
-The other constraint is the package manager: a package id shorter than **10 characters** is
-rejected instantly with `PKGMGR_ERROR`, and a *changed* manifest must be uninstalled before it
-can be installed again.
+Two more, from the package manager:
+
+- A package id shorter than **10 characters** is rejected instantly with `PKGMGR_ERROR`.
+- A **changed manifest** must be uninstalled before it can be installed again, and an app that
+  is currently running blocks its own update.
+
+One known-limitation: channels that carry audio as a **separate HLS rendition**
+(`EXT-X-MEDIA ... URI="audio.m3u8"`) may play silently on Tizen 2.3. The app calls
+`setSelectTrack('AUDIO', 0)` after `prepareAsync`, which helps on some firmware but not all.
 
 ## Credits
 
 - Channel data: [iptv-org](https://github.com/iptv-org/iptv) (public domain).
-- The AVPlay surface technique â€” including the `<object>` element and the transparency
-  requirement â€” is documented in [shayanline/OpenIPTV](https://github.com/shayanline/OpenIPTV)
+- The AVPlay surface technique — the `<object>` element and the transparency requirement — is
+  documented in [shayanline/OpenIPTV](https://github.com/shayanline/OpenIPTV)
   (`src/services/player.ts`, MIT). That project targets Tizen 5.5+; this one is aimed at
   Tizen 2.3, where the same rules apply.
 - No channel content is included or endorsed. IPTV is a player: what you point it at, and
@@ -81,4 +115,3 @@ can be installed again.
 
 MIT for the code in this repository. The playlists are third-party data, under their own
 project's terms.
-
