@@ -50,12 +50,6 @@ const sandbox = {
   },
   setTimeout, clearTimeout, console, JSON, Math, Date,
 };
-// every preflight fails, so playing a channel must be survivable and must mark it bad
-sandbox.XMLHttpRequest = function () {
-  this.open = function () {};
-  this.send = function () { setTimeout(() => { if (this.onerror) this.onerror(); }, 0); };
-  this.abort = function () {};
-};
 sandbox.window.webapis = undefined;
 vm.createContext(sandbox);
 vm.runInContext(code, sandbox, { filename: 'app.js' });
@@ -133,7 +127,7 @@ step('sections follow SECTION_ORDER', () => {
 
 console.log(failures === 0 ? '\nall checks passed' : '\n' + failures + ' checks failed');
 
-// async: a failing preflight must mark the channel bad and return to the list, not hang
+// async: opening a dead channel must mark it bad without throwing
 (async () => {
   const badBefore = Object.values(stored('iptv-rate')).filter((v) => v === 1).length;
   press(13);                                   // play it
@@ -144,13 +138,13 @@ console.log(failures === 0 ? '\nall checks passed' : '\n' + failures + ' checks 
     console.log('FAIL dead stream not marked bad (' + badBefore + ' -> ' + badAfter + ')');
     failures++;
   } else {
-    console.log('ok   dead stream marked bad after preflight failure');
+    console.log('ok   dead stream marked bad');
   }
   if (back !== '-webkit-box') {
-    console.log('FAIL list not restored after failure (display ' + back + ')');
+    console.log('FAIL list disappeared after failure (display ' + back + ')');
     failures++;
   } else {
-    console.log('ok   list restored after failure');
+    console.log('ok   list still visible after failure');
   }
   process.exit(failures === 0 ? 0 : 1);
 })();

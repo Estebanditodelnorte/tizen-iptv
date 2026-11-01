@@ -155,6 +155,23 @@ one fails) and TLS availability (almost all of them negotiate TLS 1.2 happily).
 Working rule of thumb: **plain broadcaster HLS plays; ad-tech FAST channels and US
 geo-locked feeds do not.**
 
+## Reverted: the network "preflight" before playback
+
+Tried in `acb6981`: check the stream with an XHR before handing it to AVPlay, to stop a dead
+URL wedging the decoder. **Reverted** because it stopped channels that do play from
+connecting, even after relaxing it to reject only total silence. Handing the URL straight to
+AVPlay is what ships.
+
+What the experiment did establish, and what to remember:
+
+- **The failure mode is real.** A dead stream can wedge AVPlay, and a native decoder crash
+  cannot be caught from JavaScript, so the UI freezes until the app is restarted.
+- **Restarting the app is the accepted workaround.** The owner's preference is: if channels
+  stop connecting, restart the app rather than trade away channels that work. Do not
+  reintroduce a preflight without a way to prove it never rejects a playable stream.
+- A watchdog (12 s) plus `markBad` on every failure path is the current mitigation: a dead
+  channel gets sorted to BAD, so it is not retried by accident.
+
 ## Probing: the mistakes that produced false results
 
 Each of these once caused a wrong decision, so they are worth re-reading before writing

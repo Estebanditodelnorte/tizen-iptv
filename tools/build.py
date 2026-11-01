@@ -337,77 +337,10 @@ function cancelPending() {
   }
   usingAv = false;
 }
-/* Ask the network first. Handing a dead URL straight to AVPlay can wedge the hardware
-   decoder and freeze the whole UI, and JavaScript cannot catch a native decoder crash.
-   A plain XHR can time out cleanly, so check that *something* answers before opening.
-   If the request is blocked (CORS), report "unknown" and try anyway - a widget may be
-   allowed where a plain page is not. */
-function preflight(url, cb) {
-  var done = false, xhr = null;
-  var timer = setTimeout(function () {
-    try { if (xhr) xhr.abort(); } catch (e) {}
-    finish(false, 'timeout');
-  }, 8000);
-  function finish(ok, why) {
-    if (done) return;
-    done = true;
-    clearTimeout(timer);
-    /* release the socket before AVPlay opens the same URL: on this firmware a lingering
-       request can contend with the decoder for the network stack */
-    try { if (xhr) xhr.abort(); } catch (e) {}
-    cb(ok, why);
-  }
-  try {
-    xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState !== 4) return;
-      if (xhr.status >= 200 && xhr.status < 400) {
-        var body = xhr.responseText || '';
-        finish(body.indexOf('#EXTM3U') !== -1 ? true : false, 'body');
-      } else if (!xhr.status) {
-        finish(null, 'unknown');            /* status 0 = blocked or opaque, not dead */
-      } else {
-        finish(null, 'http_' + xhr.status); /* AVPlay sends its own headers; let it try */
-      }
-    };
-    xhr.onerror = function () { finish(null, 'unknown'); };
-    xhr.send();
-  } catch (e) {
-    finish(null, 'unknown');
-  }
-}
-/* A failed channel must not leave the app looking frozen in a blank video pane. */
-function playFailed(c, reason, message) {
-  markBad(c.name, reason);
-  if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-  msg.textContent = message;
-  setTimeout(function () {
-    if (playing) showList();
-    hintEl.textContent = 'BACK tag this channel';
-  }, 1200);
-}
 function playAv(c) {
   cancelPending();
   usingAv = true;
   pendingOpen = true;
-  msg.textContent = 'Connecting...';
-  preflight(c.url, function (ok, why) {
-    if (!pendingOpen) return;                 /* the user moved on */
-    /* Only total silence is fatal. A 403 to this request, an opaque reply or a body we
-       could not read is left to AVPlay: it sends its own headers and can still play
-       what this check could not see. */
-    if (ok === false && why === 'timeout') {
-      pendingOpen = false;
-      usingAv = false;
-      playFailed(c, 'no response', 'No response from this stream');
-      return;
-    }
-    openAv(c);                                /* ok, or unknown: let the decoder try */
-  });
-}
-function openAv(c) {
-  if (!pendingOpen) return;
   msg.textContent = 'Connecting...';
   /* If the stream never answers, give up instead of waiting forever - this is what made a
      dead channel swallow every later selection. */
@@ -417,8 +350,9 @@ function openAv(c) {
     try { AV.stop(); } catch (e) {}
     try { AV.close(); } catch (e) {}
     usingAv = false;
-    playFailed(c, 'no response', 'No response from this stream');
-  }, 10000);
+    markBad(c.name, 'no response');
+    msg.textContent = 'No response from this stream';
+  }, 12000);
   function settled() {
     pendingOpen = false;
     if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; }
@@ -432,8 +366,8 @@ function openAv(c) {
       onbufferingcomplete: function () { msg.textContent = ''; },
       onstreamcompleted: function () { msg.textContent = 'Stream ended'; },
       onerror: function (e) {
-        playFailed(c, (e && e.name) || 'stream failed',
-                   'Stream failed (' + (e && e.name ? e.name : e) + ')');
+        markBad(c.name, (e && e.name) || 'stream failed');
+        msg.textContent = 'Stream failed (' + (e && e.name ? e.name : e) + ')';
       }
     });
     AV.prepareAsync(function () {
@@ -445,14 +379,15 @@ function openAv(c) {
       try { AV.play(); } catch (e) { msg.textContent = 'Play error: ' + e; }
     }, function (e) {
       settled();
-      playFailed(c, (e && e.name) || 'prepare failed',
-                 'Cannot open stream (' + (e && e.name ? e.name : e) + ')');
+      markBad(c.name, (e && e.name) || 'prepare failed');
+      msg.textContent = 'Cannot open stream (' + (e && e.name ? e.name : e) + ')';
       try { AV.close(); } catch (x) {}
       usingAv = false;
     });
   } catch (e) {
     settled();
-    playFailed(c, 'avplay error', 'AVPlay error: ' + e);
+    markBad(c.name, 'avplay error');
+    msg.textContent = 'AVPlay error: ' + e;
     usingAv = false;
   }
 }
