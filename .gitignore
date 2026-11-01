@@ -4,3 +4,6 @@ build/
 *.wgt
 app/index.html
 app/config.xml
+app/author-signature.xml
+app/signature1.xml
+app/.manifest.tmp
