@@ -86,6 +86,7 @@ template = r'''<!DOCTYPE html>
   #panel{position:absolute;top:0;left:0;bottom:0;width:44%;background:#0b0d12;z-index:5;
          display:-webkit-box;-webkit-box-orient:vertical}
   #tabs{display:-webkit-box;padding:14px 16px 8px;font-size:15px;letter-spacing:1px}
+  #tips{font-size:12px;color:#5f7ba8;padding:0 16px 8px}
   .tab{padding:6px 14px;margin-right:8px;border-radius:16px;color:#7d92b5;background:#141a24}
   .tab.on{background:#2b6cf6;color:#fff}
   #items{-webkit-box-flex:1;overflow-y:auto;padding:0 20px 20px;position:relative}
@@ -104,16 +105,24 @@ template = r'''<!DOCTYPE html>
        padding:0 30px;z-index:6}
   #hint{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:14px;color:#9fb3d9;
         text-shadow:0 1px 3px #000;z-index:6}
+  #cat{position:absolute;top:0;left:44%;right:0;bottom:0;background:#0b0d12;z-index:9;
+       display:none;padding:22px 30px;overflow-y:auto}
+  #cat h2{font-size:18px;color:#9fb3d9;margin:0 0 4px}
+  #cat .sub{font-size:14px;color:#5f7ba8;margin:0 0 14px}
+  .cat{padding:8px 12px;border-radius:6px;font-size:17px}
+  .cat.sel{background:#2b6cf6;color:#fff}
 </style></head><body>
 <!-- The plane AVPlay binds to. Created once; its size must track setDisplayRect. -->
 <object id="avplay-surface" type="application/avplayer"
         style="position:absolute;top:0;left:0;width:1920px;height:1080px;background:transparent;pointer-events:none;"></object>
 <div id="panel">
   <div id="tabs"></div>
+  <div id="tips">RED / BLUE switch list &nbsp;|&nbsp; RIGHT change category &nbsp;|&nbsp; GREEN test</div>
   <div id="items"></div>
 </div>
 <div id="idle">Choose a channel on the left<br><br>&uarr; &darr; move &nbsp; LEFT/RIGHT switch list &nbsp; OK play</div>
 <div id="now"></div><div id="msg"></div><div id="hint"></div>
+<div id="cat"></div>
 <script>
 var SOURCES = __DATA__;
 var TABS = __TABS__;
@@ -148,8 +157,9 @@ function render() {
   BAD = loadBad();
   var lastGroup = null;
   for (var i = 0; i < CH.length; i++) {
-    if (CH[i].group !== lastGroup) {
-      lastGroup = CH[i].group;
+    var gname = CAT[CH[i].name] || CH[i].group;
+    if (gname !== lastGroup) {
+      lastGroup = gname;
       var g = document.createElement('div');
       g.className = 'grp';
       g.textContent = lastGroup || 'OTHER';
@@ -343,8 +353,74 @@ function testStep() {
   }
 }
 
+function loadCat() {
+  try { return JSON.parse(localStorage.getItem('iptv-cat') || '{}'); } catch (e) { return {}; }
+}
+function saveCat() {
+  try { localStorage.setItem('iptv-cat', JSON.stringify(CAT)); } catch (e) {}
+}
+function buildCats() {
+  var seen = {}, i, t;
+  for (t in SOURCES) {
+    for (i = 0; i < SOURCES[t].length; i++) {
+      if (SOURCES[t][i].group) seen[SOURCES[t][i].group] = 1;
+    }
+  }
+  var extra = ['Kids', 'Music', 'Sports', 'News', 'Movies', 'Documentary',
+               'Entertainment', 'Religious', 'Weather', 'Other'];
+  for (i = 0; i < extra.length; i++) seen[extra[i]] = 1;
+  CATS = [];
+  for (var k in seen) CATS.push(k);
+  CATS.sort();
+}
+/* RIGHT on a channel opens this: pick a category and the channel moves there for good. */
+function openCat() {
+  if (!CH[idx]) return;
+  catTarget = CH[idx].name;
+  catMode = true;
+  catIdx = 0;
+  var current = CAT[catTarget] || CH[idx].group;
+  for (var i = 0; i < CATS.length; i++) if (CATS[i] === current) catIdx = i;
+  renderCat();
+}
+function renderCat() {
+  var box = document.getElementById('cat');
+  var html = '<h2>' + (catTarget || '') + '</h2><div class="sub">Where should this channel go?</div>';
+  for (var i = 0; i < CATS.length; i++) {
+    html += '<div class="cat' + (i === catIdx ? ' sel' : '') + '">' + CATS[i] + '</div>';
+  }
+  box.innerHTML = html;
+  box.style.display = 'block';
+  var sel = box.querySelector('.cat.sel');
+  if (sel && sel.scrollIntoView) {
+    var top = sel.offsetTop, st = box.scrollTop, ch = box.clientHeight;
+    if (top < st) box.scrollTop = top - 8;
+    else if (top + sel.offsetHeight > st + ch) box.scrollTop = top + sel.offsetHeight - ch + 8;
+  }
+}
+function closeCat() {
+  catMode = false;
+  document.getElementById('cat').style.display = 'none';
+}
+function applyCat() {
+  CAT[catTarget] = CATS[catIdx];
+  saveCat();
+  closeCat();
+  render();
+  hintEl.textContent = catTarget + ' -> ' + CATS[catIdx];
+}
+
 document.addEventListener('keydown', function (e) {
   var k = e.keyCode, handled = true;
+  if (catMode) {
+    if (k === 38) { catIdx = Math.max(0, catIdx - 1); renderCat(); }
+    else if (k === 40) { catIdx = Math.min(CATS.length - 1, catIdx + 1); renderCat(); }
+    else if (k === 13 || k === 415) { applyCat(); }
+    else if (k === 10009 || k === 27 || k === 8) { closeCat(); }
+    else { handled = false; }
+    e.preventDefault();
+    return;
+  }
   if (testing) {
     if (k === 404) {
       testing = false;
@@ -359,8 +435,9 @@ document.addEventListener('keydown', function (e) {
     return;
   }
   if (!listVisible) { showList(); e.preventDefault(); return; }
-  if (k === 37) { tab = (tab + TABS.length - 1) % TABS.length; render(); }
-  else if (k === 39) { tab = (tab + 1) % TABS.length; render(); }
+  if (k === 37 || k === 403) { tab = (tab + TABS.length - 1) % TABS.length; render(); }
+  else if (k === 406) { tab = (tab + 1) % TABS.length; render(); }
+  else if (k === 39) { openCat(); }
   else if (k === 38) { idx = Math.max(0, idx - 1); paint(); }
   else if (k === 40) { idx = Math.min(CH.length - 1, idx + 1); paint(); }
   else if (k === 13 || k === 415) { startChannel(); }
@@ -370,6 +447,8 @@ document.addEventListener('keydown', function (e) {
   if (handled) e.preventDefault();
 });
 
+CAT = loadCat();
+buildCats();
 render();
 </script></body></html>
 '''
