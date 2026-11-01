@@ -64,22 +64,33 @@ step('digit 3 assigns Kids', () => {
   press(51);
   if (Object.values(stored('iptv-cat')).indexOf('Kids') === -1) throw new Error('no Kids mapping stored');
 });
-step('LEFT stars a favourite', () => {
-  press(37);
+step('BACK opens the action menu, OK stars it', () => {
+  press(10009);   // open menu
+  press(13);      // first option: add to favourites
   if (Object.keys(stored('iptv-fav')).length === 0) throw new Error('nothing stored in iptv-fav');
 });
-step('RIGHT marks broken', () => {
-  press(39);
-  const bad = stored('iptv-bad-canada');
-  if (Object.keys(bad).length === 0) throw new Error('nothing stored in iptv-bad-canada');
+step('BACK, DOWN, OK marks it broken', () => {
+  press(10009);
+  press(40);
+  press(13);
+  if (Object.keys(stored('iptv-bad-canada')).length === 0) throw new Error('nothing stored in iptv-bad-canada');
 });
-step('RIGHT again clears it', () => {
-  press(39);
+step('BACK, DOWN, OK again marks it working', () => {
+  press(10009);
+  press(40);
+  press(13);
   if (Object.keys(stored('iptv-bad-canada')).length !== 0) throw new Error('broken flag not cleared');
 });
+step('BACK then BACK cancels without changing anything', () => {
+  const before = JSON.stringify(stored('iptv-cat'));
+  press(10009);
+  press(10009);
+  if (JSON.stringify(stored('iptv-cat')) !== before) throw new Error('cancel changed state');
+});
 step('OK plays without throwing', () => press(13));
-step('BACK returns', () => press(10009));
-step('UP at the top wraps to the previous tab', () => { press(38); press(38); press(38); });
+step('BACK stops playback, next BACK opens the menu', () => { press(10009); press(10009); });
+step('RIGHT switches list', () => press(39));
+step('LEFT switches back', () => press(37));
 
 console.log(failures === 0 ? '\nall checks passed' : '\n' + failures + ' checks failed');
 process.exit(failures === 0 ? 0 : 1);

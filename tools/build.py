@@ -117,7 +117,7 @@ template = r'''<!DOCTYPE html>
         style="position:absolute;top:0;left:0;width:1920px;height:1080px;background:transparent;pointer-events:none;"></object>
 <div id="panel">
   <div id="tabs"></div>
-  <div id="tips">&uarr;&darr; move (wrap = next list) &nbsp;|&nbsp; <b>&larr;</b> star favourite &nbsp;|&nbsp; <b>&rarr;</b> mark broken &nbsp;|&nbsp; OK play</div>
+  <div id="tips">&larr; &rarr; lists &nbsp;|&nbsp; &uarr;&darr; move &nbsp;|&nbsp; OK play &nbsp;|&nbsp; <b>BACK</b> tag this channel &nbsp;|&nbsp; GREEN test</div>
   <div id="items"></div>
 </div>
 <div id="idle">Choose a channel on the left<br><br>&uarr; &darr; move &nbsp; LEFT/RIGHT switch list &nbsp; OK play</div>
@@ -422,6 +422,58 @@ function toggleBad() {
   saveBad(BAD); render(true); focusName(name);
 }
 
+var actMode = false, actIdx = 0;
+function actionList() {
+  if (!CH[idx]) return [];
+  var n = CH[idx].name;
+  var list = [];
+  list.push(FAV[n] ? '\u2605 Remove from favourites' : '\u2605 Add to favourites');
+  list.push(BAD[n] ? '\u2713 This one works' : '\u2717 Mark as broken');
+  list.push('Keep it in its category only');
+  list.push('Cancel');
+  return list;
+}
+/* BACK opens this while browsing: an explicit menu, so nothing is a hidden shortcut. */
+function openActions() {
+  if (!CH[idx]) return;
+  actMode = true;
+  actIdx = 0;
+  renderActions();
+}
+function renderActions() {
+  var box = document.getElementById('cat');
+  var opts = actionList();
+  var html = '<h2>' + (CH[idx] ? CH[idx].name : '') + '</h2>' +
+             '<div class="sub">What should happen to this channel? &nbsp; OK choose &nbsp; BACK cancel</div>';
+  for (var i = 0; i < opts.length; i++) {
+    html += '<div class="cat' + (i === actIdx ? ' sel' : '') + '">' + opts[i] + '</div>';
+  }
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+function closeActions() {
+  actMode = false;
+  document.getElementById('cat').style.display = 'none';
+}
+function applyAction() {
+  var name = CH[idx].name;
+  if (actIdx === 0) {
+    if (FAV[name]) { delete FAV[name]; hintEl.textContent = name + '  un-starred'; }
+    else { FAV[name] = 1; delete BAD[name]; saveBad(BAD); hintEl.textContent = name + '  \u2605 favourite'; }
+    saveFav();
+  } else if (actIdx === 1) {
+    if (BAD[name]) { delete BAD[name]; hintEl.textContent = name + '  marked working'; }
+    else { BAD[name] = 1; delete FAV[name]; saveFav(); hintEl.textContent = name + '  marked broken'; }
+    saveBad(BAD);
+  } else if (actIdx === 2) {
+    delete FAV[name]; delete BAD[name]; saveFav(); saveBad(BAD);
+    hintEl.textContent = name + '  marks cleared';
+  }
+  closeActions();
+  render(true);
+  focusName(name);
+}
+
 function loadCat() {
   try { return JSON.parse(localStorage.getItem('iptv-cat') || '{}'); } catch (e) { return {}; }
 }
@@ -484,6 +536,15 @@ function applyCat() {
 
 document.addEventListener('keydown', function (e) {
   var k = e.keyCode, handled = true;
+  if (actMode) {
+    if (k === 38) { actIdx = Math.max(0, actIdx - 1); renderActions(); }
+    else if (k === 40) { actIdx = Math.min(actionList().length - 1, actIdx + 1); renderActions(); }
+    else if (k === 13 || k === 415) { applyAction(); }
+    else if (k === 10009 || k === 27 || k === 8) { closeActions(); }
+    else { handled = false; }
+    e.preventDefault();
+    return;
+  }
   if (catMode) {
     if (k === 38) { catIdx = Math.max(0, catIdx - 1); renderCat(); }
     else if (k === 40) { catIdx = Math.min(CATS.length - 1, catIdx + 1); renderCat(); }
@@ -507,20 +568,16 @@ document.addEventListener('keydown', function (e) {
     return;
   }
   if (!listVisible) { showList(); e.preventDefault(); return; }
-  if (k === 37) { toggleFav(); }
-  else if (k === 39) { toggleBad(); }
-  else if (k === 38) {
-    if (idx === 0) { tab = (tab + TABS.length - 1) % TABS.length; render(); }
-    else { idx--; paint(); }
-  }
-  else if (k === 40) {
-    if (idx >= CH.length - 1) { tab = (tab + 1) % TABS.length; render(); }
-    else { idx++; paint(); }
-  }
+  if (k === 37) { tab = (tab + TABS.length - 1) % TABS.length; render(); }
+  else if (k === 39) { tab = (tab + 1) % TABS.length; render(); }
+  else if (k === 38) { idx = Math.max(0, idx - 1); paint(); }
+  else if (k === 40) { idx = Math.min(CH.length - 1, idx + 1); paint(); }
   else if (k === 13 || k === 415) { startChannel(); }
   else if (k >= 48 && k <= 57) { assignCat(NUMCATS[k]); }
   else if (k === 404) { startTest(); }
-  else if (k === 10009 || k === 27 || k === 8) { stopPlayback(); }
+  else if (k === 10009 || k === 27 || k === 8) {
+    if (playing) stopPlayback(); else openActions();
+  }
   else { handled = false; }
   if (handled) e.preventDefault();
 });
