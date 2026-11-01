@@ -79,7 +79,7 @@ template = r'''<!DOCTYPE html>
   #tabs{display:-webkit-box;padding:14px 16px 8px;font-size:15px;letter-spacing:1px}
   .tab{padding:6px 14px;margin-right:8px;border-radius:16px;color:#7d92b5;background:#141a24}
   .tab.on{background:#2b6cf6;color:#fff}
-  #items{-webkit-box-flex:1;overflow-y:auto;padding:0 20px 20px}
+  #items{-webkit-box-flex:1;overflow-y:auto;padding:0 20px 20px;position:relative}
   .grp{font-size:12px;color:#5f7ba8;margin:12px 0 3px;letter-spacing:1px}
   .ch{padding:7px 11px;border-radius:6px;font-size:16px;white-space:nowrap;overflow:hidden;
       text-overflow:ellipsis}
@@ -134,7 +134,7 @@ function buildTabs() {
 }
 function render() {
   CH = SOURCES[TABS[tab]] || [];
-  idx = 0; rows = []; items.innerHTML = '';
+  idx = 0; rows = []; items.innerHTML = ''; painted = -1;
   BAD = loadBad();
   var lastGroup = null;
   for (var i = 0; i < CH.length; i++) {
@@ -153,9 +153,21 @@ function render() {
   }
   buildTabs(); paint();
 }
+var painted = -1;
+/* Repaint only the two rows that changed and scroll by arithmetic. The previous version
+   called scrollIntoView() on every keypress, which forces a synchronous layout of the whole
+   list and hangs this engine near the bottom of a long tab. */
 function paint() {
-  for (var i = 0; i < rows.length; i++) rows[i].className = (i === idx ? 'ch sel' : 'ch');
-  if (rows[idx] && rows[idx].scrollIntoView) rows[idx].scrollIntoView(false);
+  if (painted >= 0 && rows[painted]) rows[painted].className = 'ch';
+  if (!rows[idx]) return;
+  rows[idx].className = 'ch sel';
+  painted = idx;
+  var top = rows[idx].offsetTop;
+  var height = rows[idx].offsetHeight;
+  var viewTop = items.scrollTop;
+  var viewHeight = items.clientHeight;
+  if (top < viewTop) items.scrollTop = top - 8;
+  else if (top + height > viewTop + viewHeight) items.scrollTop = top + height - viewHeight + 8;
 }
 function applyRect() {
   var w = window.innerWidth, h = window.innerHeight;
