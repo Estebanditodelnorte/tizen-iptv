@@ -150,6 +150,27 @@ Thresholds default to 2500 kbps (FAST) and 1000 kbps (MEDIUM); pass `--fast` / `
 change them. Entries with no successful measurement are dropped, on the view that a channel
 nobody could measure is not one to put in front of a viewer.
 
+## Verifying that a channel has video
+
+`tools/video_probe.py` does not trust HTTP 200. It follows master -> variant -> first segment
+and inspects the media itself:
+
+- **MPEG-TS** segments are parsed: PAT -> PMT -> elementary stream types. H.264 (0x1b),
+  HEVC (0x24), MPEG-2 (0x02) and MPEG-4 (0x10) count as video; an audio-only playlist does not.
+- **fragmented MP4** segments are checked for a `vide` handler.
+- **AES-128 / SAMPLE-AES** playlists are rejected as `encrypted`.
+
+That last point is the useful discovery: Tizen 2.3 cannot decrypt HLS AES-128, so every
+Pluto-backed channel (the `jmp2.uk/plu-...` URLs) plays as nothing on this TV. That is why
+The Weather Network never worked, and removing that whole class took KIDS from 156 to 84.
+
+```bash
+python3 tools/video_probe.py playlists/kids.m3u reports/video-kids.csv
+```
+
+Variant selection skips audio-only renditions - some masters list one at the lowest bandwidth,
+and picking it made a healthy channel look audio-only.
+
 ## Credits
 
 - Channel data: [iptv-org](https://github.com/iptv-org/iptv) (public domain).

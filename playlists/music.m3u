@@ -1,41 +1,35 @@
 #EXTM3U
-#EXTINF:-1 tvg-id="SolMusica.es@SD" tvg-logo="https://i.imgur.com/rbJrmPw.png" group-title="FAST",Sol Musica (720p)
+#EXTINF:-1 tvg-id="SolMusica.es@SD" tvg-logo="https://i.imgur.com/rbJrmPw.png" group-title="Music",Sol Musica (720p)
 https://d2glyu450vvghm.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-21u4g5cjglv02/sm.m3u8
-#EXTINF:-1 tvg-id="MetaleitorTV.us@SD" tvg-logo="https://new.opencaster.com/uploads/logos/logo_14_1752798826.png" group-title="FAST",Metaleitor TV
+#EXTINF:-1 tvg-id="MetaleitorTV.us@SD" tvg-logo="https://new.opencaster.com/uploads/logos/logo_14_1752798826.png" group-title="Music",Metaleitor TV
 https://vs20.live.opencaster.com/metaleitortv_423d3342/index.m3u8
-#EXTINF:-1 tvg-id="MTVFlowLatino.us@LatAm" tvg-logo="https://images.pluto.tv/channels/62b218fc511d4b00070ddc0c/colorLogoPNG.png" group-title="FAST",MTV Flow Latino LatAm (720p)
-https://jmp2.uk/plu-62b218fc511d4b00070ddc0c.m3u8
-#EXTINF:-1 tvg-id="XITESiempreLatino.us@SD" tvg-logo="https://i.imgur.com/bwmIEgG.png" group-title="FAST",XITE Siempre Latino (1080p)
+#EXTINF:-1 tvg-id="XITESiempreLatino.us@SD" tvg-logo="https://i.imgur.com/bwmIEgG.png" group-title="Music",XITE Siempre Latino (1080p)
 https://d1xc25jm9e0l4b.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-xplkt8i7m24dc/XITE_Siempre_Latino.m3u8
-#EXTINF:-1 tvg-id="XITENuevoLatino.us@SD" tvg-logo="https://i.imgur.com/2qyl2y3.png" group-title="FAST",XITE Nuevo Latino (1080p)
+#EXTINF:-1 tvg-id="XITENuevoLatino.us@SD" tvg-logo="https://i.imgur.com/2qyl2y3.png" group-title="Music",XITE Nuevo Latino (1080p)
 https://d3bsgqzbpkrvbb.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-w288eaw03izg1/XITE_Nuevo_Latino.m3u8
-#EXTINF:-1 tvg-id="MTVClassic.us@LatAm" tvg-logo="https://images.pluto.tv/channels/66a01dcb8561260008b0a41d/colorLogoPNG.png" group-title="FAST",MTV Classic LatAm (720p)
-https://jmp2.uk/plu-66a11a21a79dea0008aa90ca.m3u8
-#EXTINF:-1 tvg-id="MTVBiggestPop.us@LatAm" tvg-logo="https://images.pluto.tv/channels/6047fbdbbb776a0007e7f2ff/colorLogoPNG.png" group-title="FAST",MTV Biggest Pop LatAm (1080p)
-https://jmp2.uk/plu-6047fabfce6e8e00070bcc9f.m3u8
-#EXTINF:-1 tvg-id="Totalmusic80s.uk@HD" tvg-logo="https://static.elektamedia.com/ch/tmc_80s.png" group-title="FAST",Totalmusic 80s (720p)
+#EXTINF:-1 tvg-id="Totalmusic80s.uk@HD" tvg-logo="https://static.elektamedia.com/ch/tmc_80s.png" group-title="Music",Totalmusic 80s (720p)
 https://cdn.global.elektamedia.com/live/c7eds/Totalmusic_80s/SA_LIVE_hls_enc/master.m3u8
-#EXTINF:-1 tvg-id="Totalmusic2000s.uk@HD" tvg-logo="" group-title="FAST",Totalmusic 2000s (720p)
+#EXTINF:-1 tvg-id="Totalmusic2000s.uk@HD" tvg-logo="" group-title="Music",Totalmusic 2000s (720p)
 https://cdn.global.elektamedia.com/live/c7eds/Totalmusic_00s/SA_LIVE_hls_enc/master.m3u8
-#EXTINF:-1 tvg-id="RetromusicaTelevision.cl@SD" tvg-logo="https://cdn.m3u.cl/logo/1765_Retromusica_Television.png" group-title="FAST",Retromusica Television (720p)
+#EXTINF:-1 tvg-id="RetromusicaTelevision.cl@SD" tvg-logo="https://cdn.m3u.cl/logo/1765_Retromusica_Television.png" group-title="Music",Retromusica Television (720p)
 https://vdochile.com:3864/stream/play.m3u8
-#EXTINF:-1 tvg-id="La100.ar@SD" tvg-logo="https://cloudfront-us-east-1.images.arcpublishing.com/radiomitre/CZJMM4BJVRFANO4VGMMYWSTEVE.png" group-title="FAST",La 100 (1080p)
+#EXTINF:-1 tvg-id="La100.ar@SD" tvg-logo="https://cloudfront-us-east-1.images.arcpublishing.com/radiomitre/CZJMM4BJVRFANO4VGMMYWSTEVE.png" group-title="Music",La 100 (1080p)
 https://mdstrm.com/live-stream-playlist/68b74fd1d6512526f1f7c75a.m3u8
-#EXTINF:-1 tvg-id="VideoTourChannel.cr@SD" tvg-logo="https://i.imgur.com/zEi8eMC.png" group-title="FAST",Video Tour Channel
+#EXTINF:-1 tvg-id="VideoTourChannel.cr@SD" tvg-logo="https://i.imgur.com/zEi8eMC.png" group-title="Music",Video Tour Channel
 https://59ef525c24caa.streamlock.net/videotour/videotour/playlist.m3u8
-#EXTINF:-1 tvg-id="HTV.us@SD" tvg-logo="https://i.imgur.com/NlKFNHS.png" group-title="FAST",HTV (720p)
+#EXTINF:-1 tvg-id="HTV.us@SD" tvg-logo="https://i.imgur.com/NlKFNHS.png" group-title="Music",HTV (720p)
 http://45.171.64.30:6060/play/a012/index.m3u8
-#EXTINF:-1 tvg-id="VintageMusic.cr@SD" tvg-logo="https://i.imgur.com/KImqYnN.jpeg" group-title="FAST",Vintage Music (720p)
+#EXTINF:-1 tvg-id="VintageMusic.cr@SD" tvg-logo="https://i.imgur.com/KImqYnN.jpeg" group-title="Music",Vintage Music (720p)
 https://59ef525c24caa.streamlock.net/vmtv/tvvintage/playlist.m3u8
-#EXTINF:-1 tvg-id="ExaTV.mx@SD" tvg-logo="https://i.imgur.com/JWOqr1a.png" group-title="FAST",Exa TV
-http://190.61.90.17:40000/play/a0hk/index.m3u8
-#EXTINF:-1 tvg-id="Bandamax.mx@SD" tvg-logo="https://i.imgur.com/4DfnOTA.png" group-title="FAST",Bandamax (1080p)
+#EXTINF:-1 tvg-id="Bandamax.mx@SD" tvg-logo="https://i.imgur.com/4DfnOTA.png" group-title="Music",Bandamax (1080p)
 http://181.78.106.127:5000/play/ca064/index.m3u8
-#EXTINF:-1 tvg-id="RewindTV.cl@SD" tvg-logo="https://i.imgur.com/OG0RC2e.png" group-title="MEDIUM",Rewind TV (1080p)
+#EXTINF:-1 tvg-id="RewindTV.cl@SD" tvg-logo="https://i.imgur.com/OG0RC2e.png" group-title="Music",Rewind TV (1080p)
 https://tls-cl.cdnz.cl/rewindtv/live/playlist.m3u8
-#EXTINF:-1 tvg-id="RockPop.ar@SD" tvg-logo="https://fmrockandpop.com/images/ryp/R&P_Logo_web_207x112px.png" group-title="MEDIUM",Rock & Pop (1080p)
+#EXTINF:-1 tvg-id="RockPop.ar@SD" tvg-logo="https://fmrockandpop.com/images/ryp/R&P_Logo_web_207x112px.png" group-title="Music",Rock & Pop (1080p)
 http://190.128.214.97:64333/play/a032/index.m3u8
-#EXTINF:-1 tvg-id="HTV.us@Argentina" tvg-logo="https://i.imgur.com/NlKFNHS.png" group-title="MEDIUM",HTV Argentina (720p)
+#EXTINF:-1 tvg-id="HTV.us@Argentina" tvg-logo="https://i.imgur.com/NlKFNHS.png" group-title="Music",HTV Argentina (720p)
 http://45.134.141.161:2200/ARG/HTV/index.m3u8
-#EXTINF:-1 tvg-id="TeleHit.mx@SD" tvg-logo="https://i.imgur.com/NVxHxJn.png" group-title="MEDIUM",TeleHit (1080p)
+#EXTINF:-1 tvg-id="TeleHit.mx@SD" tvg-logo="https://i.imgur.com/NVxHxJn.png" group-title="Music",TeleHit (1080p)
 http://190.61.47.54:8000/play/a029/index.m3u8
+#EXTINF:-1 tvg-id="TotalmusicConcerts.uk@HD" tvg-logo="https://static.elektamedia.com/ch/tmc_concerts.png" group-title="Music",Totalmusic Concerts (720p)
+https://cdn.global.elektamedia.com/live/c7eds/Totalmusic_Concerts/SA_LIVE_hls_enc/master.m3u8
