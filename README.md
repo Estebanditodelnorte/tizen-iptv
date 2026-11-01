@@ -135,6 +135,21 @@ kbps into a "Sports (slow)" group at the end of the list instead of deleting it 
 judgement call, broken is not. Run it on the network the TV uses; the numbers are that
 machine's view of the internet.
 
+## Ordering by speed
+
+`speed_probe.py` writes a CSV per playlist; `order_by_speed.py` re-sorts that playlist fastest
+first and rewrites each entry's `group-title` to its tier, so the app shows FAST, then MEDIUM,
+then SLOW:
+
+```bash
+python3 tools/speed_probe.py playlists/sports.m3u reports/speed-sports.csv
+python3 tools/order_by_speed.py playlists/sports.m3u reports/speed-sports.csv
+```
+
+Thresholds default to 2500 kbps (FAST) and 1000 kbps (MEDIUM); pass `--fast` / `--slow` to
+change them. Entries with no successful measurement are dropped, on the view that a channel
+nobody could measure is not one to put in front of a viewer.
+
 ## Credits
 
 - Channel data: [iptv-org](https://github.com/iptv-org/iptv) (public domain).
