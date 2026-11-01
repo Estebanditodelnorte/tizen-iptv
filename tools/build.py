@@ -486,11 +486,87 @@ function assignCat(cat) {
   hintEl.textContent = name + '  \u2192  ' + cat;
 }
 
-function focusName(name) {
-  for (var i = 0; i < CH.length; i++) {
-    if (CH[i].name === name) { idx = i; paint(); return; }
+/* Rating replaces the old star/broken flags: 3 = very good (top), 2 = good, 1 = bad (bottom),
+   absent = unrated, which keeps its category. */
+function loadRate() {
+  var r = {}, k;
+  for (k in DEFAULT_RATE) r[k] = DEFAULT_RATE[k];      /* baked in from playlists/ratings.json */
+  try {
+    var raw = localStorage.getItem('iptv-rate');
+    if (raw) {
+      var s = JSON.parse(raw);
+      for (k in s) { if (s[k] === 0) delete r[k]; else r[k] = s[k]; }
+      return r;
+    }
+    var f = JSON.parse(localStorage.getItem('iptv-fav') || '{}');
+    for (k in f) r[k] = 3;
+    var b = JSON.parse(localStorage.getItem('iptv-bad-' + TABS[tab]) || '{}');
+    for (k in b) r[k] = 1;
+  } catch (e) {}
+  return r;
+}
+function saveRate() {
+  try { localStorage.setItem('iptv-rate', JSON.stringify(RATE)); } catch (e) {}
+}
+function markBad(name) {
+  RATE[name] = 1;
+  saveRate();
+}
+/* Walk every channel in the current tab, open it, and record whether the decoder accepts it.
+   This is the only test that reflects what the TV can actually play. */
+function startTest() {
+  if (testing) return;
+  if (playing) stopPlayback();
+  testing = true; testIdx = 0;
+  testStep();
+}
+function testStep() {
+  if (testIdx >= CH.length) {
+    testing = false;
+    nowEl.textContent = ''; msg.textContent = ''; hintEl.textContent = '';
+    render();
+    return;
+  }
+  var c = CH[testIdx];
+  nowEl.textContent = 'TESTING ' + (testIdx + 1) + ' / ' + CH.length;
+  hintEl.textContent = c.name + '  \u2014  GREEN to stop';
+  var done = false;
+  function finish(ok, reason) {
+    if (done) return;
+    done = true;
+    if (testTimer) { clearTimeout(testTimer); testTimer = null; }
+    if (usingAv && AV) { try { AV.stop(); } catch (e) {} try { AV.close(); } catch (e) {} usingAv = false; }
+    if (!ok) markBad(c.name, reason);
+    testIdx++;
+    setTimeout(testStep, 250);
+  }
+  testTimer = setTimeout(function () { finish(false, 'timeout'); }, 9000);
+  try {
+    usingAv = true;
+    AV.open(c.url);
+    AV.setListener({ onerror: function (e) { finish(false, (e && e.name) || 'error'); } });
+    AV.prepareAsync(function () { finish(true); },
+                    function (e) { finish(false, (e && e.name) || 'prepare_failed'); });
+  } catch (e) {
+    finish(false, 'open_failed');
   }
 }
+
+/* Number keys assign a category straight onto the highlighted channel - no menu, because the
+   colour keys on some remotes never reach a web app. 1..9 and 0. */
+var NUMCATS = {
+  49: 'News', 50: 'Sports', 51: 'Kids', 52: 'Music', 53: 'Movies',
+  54: 'Documentary', 55: 'Entertainment', 56: 'Religious', 57: 'Weather', 48: 'Other'
+};
+function assignCat(cat) {
+  if (!CH[idx]) return;
+  var name = CH[idx].name;
+  CAT[name] = cat;
+  saveCat();
+  render(true);
+  hintEl.textContent = name + '  \u2192  ' + cat;
+}
+
 
 var actMode = false, actIdx = 0;
 function ratingOf(name) { return RATE[name] || 0; }
@@ -555,8 +631,13 @@ function applyAction() {
   }
   saveRate();
   closeActions();
+  var here = idx;
   render(true);
-  focusName(name);
+  /* Stay where the eye is: the tagged channel moves to its section, and the row under the
+     cursor becomes the next channel. Following the channel instead meant a "bad" rating
+     threw the selection to the bottom of the list. */
+  idx = Math.min(here, Math.max(0, CH.length - 1));
+  paint();
 }
 
 function loadCat() {

@@ -73,20 +73,25 @@ function selectedName() {
 const rated = () => stored('iptv-rate')[selectedName()];
 
 step('BACK + OK rates Very good', () => {
+  const name = selectedName();
   press(10009); press(13);
-  if (rated() !== 3) throw new Error('expected rating 3, got ' + rated());
+  if (stored('iptv-rate')[name] !== 3) throw new Error('expected 3, got ' + stored('iptv-rate')[name]);
+});
+step('cursor stays put after a rating', () => {
+  const before = selectedName();
+  press(10009); press(40); press(40); press(13);   // rate bad: would have jumped to BOTTOM
+  const after = selectedName();
+  if (before === after) throw new Error('cursor followed the channel instead of staying');
 });
 step('BACK + DOWN + OK rates Good', () => {
+  const name = selectedName();
   press(10009); press(40); press(13);
-  if (rated() !== 2) throw new Error('expected rating 2, got ' + rated());
-});
-step('BACK + DOWN x2 + OK rates Bad', () => {
-  press(10009); press(40); press(40); press(13);
-  if (rated() !== 1) throw new Error('expected rating 1, got ' + rated());
+  if (stored('iptv-rate')[name] !== 2) throw new Error('expected 2, got ' + stored('iptv-rate')[name]);
 });
 step('BACK + DOWN x3 + OK clears the rating', () => {
+  const name = selectedName();
   press(10009); press(40); press(40); press(40); press(13);
-  if (rated() !== 0) throw new Error('expected 0, got ' + rated());
+  if (stored('iptv-rate')[name] !== 0) throw new Error('expected 0, got ' + stored('iptv-rate')[name]);
 });
 step('Cancel changes nothing', () => {
   const name = selectedName();
