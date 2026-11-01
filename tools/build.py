@@ -23,6 +23,11 @@ TABS = [
     ('music', 'MUSIC'),
 ]
 
+# Order of the sections inside every tab. V3 / V2 / V1 are the ratings given on the TV;
+# any other name is a category, and '*' means "every remaining category, in the order it
+# first appears". Edit this list to reorder the whole app.
+SECTION_ORDER = ['V3', 'Music', 'Kids', 'News', 'Sports', 'V2', 'Religious', '*', 'V1']
+
 def channel_name(extinf):
     """The name is after the last quoted attribute. Splitting on the first comma breaks
     entries whose attributes contain one (http-user-agent strings do)."""
@@ -127,6 +132,7 @@ template = r'''<!DOCTYPE html>
 var SOURCES = __DATA__;
 var TABS = __TABS__;
 var LABELS = __LABELS__;
+var SECTION_ORDER = __ORDER__;
 var tab = 0, CH = [], idx = 0, rows = [], playing = false, usingAv = false, listVisible = true, hideTimer = null;
 var RATE = {}, testing = false, testIdx = 0, testTimer = null;
 var connectTimer = null, pendingOpen = false;
@@ -156,41 +162,52 @@ function buildTabs() {
 function render(keepIdx) {
   var src = SOURCES[TABS[tab]] || [];
   RATE = loadRate();
-  var best = [], good = [], normal = [], bad = [];
+  var buckets = {}, order = [];
   for (var i = 0; i < src.length; i++) {
-    var r = RATE[src[i].name];
-    if (r === 3) best.push(src[i]);
-    else if (r === 2) good.push(src[i]);
-    else if (r === 1) bad.push(src[i]);
-    else normal.push(src[i]);
+    var nm = src[i].name, r = RATE[nm], key;
+    if (r === 3) key = 'V3';
+    else if (r === 2) key = 'V2';
+    else if (r === 1) key = 'V1';
+    else key = CAT[nm] || src[i].group || 'Other';
+    if (!buckets[key]) { buckets[key] = []; }
+    buckets[key].push(src[i]);
   }
-  /* rating drives the order: very good, good, unrated in their own categories, bad last */
-  CH = best.concat(good, normal, bad);
-  var bestEnd = best.length;
-  var goodEnd = bestEnd + good.length;
-  var badStart = goodEnd + normal.length;
+  /* sections come out in SECTION_ORDER; '*' expands to every remaining category */
+  var keys = [];
+  for (var s = 0; s < SECTION_ORDER.length; s++) {
+    var want = SECTION_ORDER[s];
+    if (want === '*') {
+      for (var k in buckets) {
+        if (keys.indexOf(k) < 0 && SECTION_ORDER.indexOf(k) < 0) keys.push(k);
+      }
+    } else if (buckets[want] && keys.indexOf(want) < 0) {
+      keys.push(want);
+    }
+  }
+  for (var k2 in buckets) if (keys.indexOf(k2) < 0) keys.push(k2);
+
+  CH = [];
+  for (var j = 0; j < keys.length; j++) CH = CH.concat(buckets[keys[j]]);
+
   if (!keepIdx) idx = 0;
   if (idx >= CH.length) idx = Math.max(0, CH.length - 1);
   rows = []; items.innerHTML = ''; painted = -1;
-  var lastGroup = null;
-  for (var i = 0; i < CH.length; i++) {
-    var gname;
-    if (i < bestEnd) gname = '\u2605\u2605 VERY GOOD';
-    else if (i < goodEnd) gname = '\u2605 GOOD';
-    else if (i >= badStart) gname = '\u2717 BAD \u2014 keep apart';
-    else gname = (CAT[CH[i].name] || CH[i].group);
-    if (gname !== lastGroup) {
-      lastGroup = gname;
-      var g = document.createElement('div');
-      g.className = 'grp';
-      g.textContent = lastGroup || 'OTHER';
-      items.appendChild(g);
+  for (var j2 = 0; j2 < keys.length; j2++) {
+    var label = keys[j2] === 'V3' ? '\u2605\u2605 VERY GOOD'
+              : keys[j2] === 'V2' ? '\u2605 GOOD'
+              : keys[j2] === 'V1' ? '\u2717 BAD' : keys[j2];
+    var g = document.createElement('div');
+    g.className = 'grp';
+    g.textContent = label;
+    items.appendChild(g);
+    var arr = buckets[keys[j2]];
+    for (var q = 0; q < arr.length; q++) {
+      var d = document.createElement('div');
+      d.className = 'ch';
+      d.textContent = (RATE[arr[q].name] === 3 ? '\u2605\u2605 ' : (RATE[arr[q].name] === 1 ? '\u2717 ' : '')) + arr[q].name;
+      items.appendChild(d);
+      rows.push(d);
     }
-    var d = document.createElement('div');
-    d.className = 'ch';
-    d.textContent = (RATE[CH[i].name] === 1 ? '\u2717 ' : '') + CH[i].name;
-    items.appendChild(d);
-    rows.push(d);
   }
   buildTabs(); paint();
 }
@@ -581,7 +598,8 @@ labels = {t: l for t, l in TABS}
 html = (template
         .replace('__DATA__', json.dumps(data, ensure_ascii=False))
         .replace('__TABS__', json.dumps(ids))
-        .replace('__LABELS__', json.dumps(labels)))
+        .replace('__LABELS__', json.dumps(labels))
+        .replace('__ORDER__', json.dumps(SECTION_ORDER)))
 open(os.path.join(APP, 'index.html'), 'w', encoding='utf-8').write(html)
 
 total = sum(len(v) for v in data.values())

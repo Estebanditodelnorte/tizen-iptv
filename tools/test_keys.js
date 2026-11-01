@@ -25,6 +25,11 @@ El.prototype.setAttribute = function (k, v) { this.attributes[k] = v; };
 El.prototype.getAttribute = function (k) { return this.attributes[k]; };
 El.prototype.querySelector = function () { return null; };
 El.prototype.removeAttribute = function () {};
+// innerHTML must actually clear children, or repeated renders accumulate headers
+Object.defineProperty(El.prototype, 'innerHTML', {
+  get() { return this._html || ''; },
+  set(v) { this._html = v; this.children.length = 0; },
+});
 
 const elements = {};
 const store = {};
@@ -92,6 +97,23 @@ step('OK plays without throwing', () => press(13));
 step('BACK stops playback', () => press(10009));
 step('RIGHT switches list', () => press(39));
 step('LEFT switches back', () => press(37));
+step('rating puts a VERY GOOD section first', () => {
+  press(10009); press(13);                       // rate the highlighted channel very good
+  const heads = elements['items'].children
+    .filter((c) => c.className === 'grp')
+    .map((c) => c.textContent);
+  if (heads[0] !== '\u2605\u2605 VERY GOOD') throw new Error('first section is ' + heads[0]);
+});
+step('sections follow SECTION_ORDER', () => {
+  const heads = elements['items'].children
+    .filter((c) => c.className === 'grp')
+    .map((c) => c.textContent);
+  const music = heads.indexOf('Music');
+  const good = heads.indexOf('\u2605 GOOD');
+  const bad = heads.indexOf('\u2717 BAD');
+  if (music !== -1 && good !== -1 && music > good) throw new Error('Music should precede GOOD');
+  if (bad !== -1 && bad !== heads.length - 1) throw new Error('BAD should be last');
+});
 
 console.log(failures === 0 ? '\nall checks passed' : '\n' + failures + ' checks failed');
 process.exit(failures === 0 ? 0 : 1);
