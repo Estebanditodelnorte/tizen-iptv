@@ -20,6 +20,7 @@ TABS = [
     ('public', 'PUBLIC'),
     ('kids', 'KIDS'),
     ('learn', 'LEARN'),
+    ('music', 'MUSIC'),
 ]
 
 def parse(path):

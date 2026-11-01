@@ -10,7 +10,7 @@ never has to fetch a playlist — which matters, because an old Tizen set is bad
 ## What it does
 
 - Six tabs, switched with **â† / â†’**: CANADA, MEXICO, SPORTS, PUBLIC (PBS, BBC, public access),
-  KIDS (PBS Kids by timezone), LEARN (education and documentary).
+  KIDS (PBS Kids by timezone), LEARN (education and documentary), MUSIC (Spanish rock, pop, retro).
 - **â†‘ / â†“** moves through the channel list, **OK** plays, **BACK** stops.
 - **GREEN** tests every channel in the current tab and marks the ones the TV cannot play.
 - The list sits on the left and the video on the right; the list auto-hides 4 s into playback
