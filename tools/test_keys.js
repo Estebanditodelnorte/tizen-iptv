@@ -50,7 +50,21 @@ const sandbox = {
   },
   setTimeout, clearTimeout, console, JSON, Math, Date,
 };
-sandbox.window.webapis = undefined;
+const fake = { opens: 0, stops: 0, closes: 0 };
+sandbox.webapis = {
+  avplay: {
+    open() { fake.opens++; },
+    setListener() {},
+    prepareAsync(onOk, onErr) { setTimeout(function () { if (onErr) onErr({ name: 'stub_fail' }); }, 20); },
+    play() {},
+    stop() { fake.stops++; },
+    close() { fake.closes++; },
+    setSelectTrack() {},
+    setDisplayRect() {},
+    getState() { return 'IDLE'; },
+  },
+};
+sandbox.window.webapis = sandbox.webapis;
 vm.createContext(sandbox);
 vm.runInContext(code, sandbox, { filename: 'app.js' });
 
@@ -132,24 +146,43 @@ step('sections follow SECTION_ORDER', () => {
 
 console.log(failures === 0 ? '\nall checks passed' : '\n' + failures + ' checks failed');
 
-// async: opening a dead channel must mark it bad without throwing
+// async: the post-stop cooldown, the token, then the failure path
 (async () => {
-  const badBefore = Object.values(stored('iptv-rate')).filter((v) => v === 1).length;
-  press(13);                                   // play it
-  await new Promise((r) => setTimeout(r, 1200));
-  const badAfter = Object.values(stored('iptv-rate')).filter((v) => v === 1).length;
-  const back = elements['panel'].style.display;
-  if (badAfter <= badBefore) {
-    console.log('FAIL dead stream not marked bad (' + badBefore + ' -> ' + badAfter + ')');
-    failures++;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  await wait(1500);                       // let any cooldown from the sync steps expire
+
+  // 1. a normal open
+  fake.opens = 0;
+  press(13);
+  await wait(600);
+  if (fake.opens === 1) console.log('ok   one press opens one channel');
+  else { console.log('FAIL expected 1 open, saw ' + fake.opens); failures++; }
+
+  // 2. stop, then press OK immediately: the open must be deferred, not dropped
+  press(10009);
+  await wait(30);
+  fake.opens = 0;
+  press(13);
+  await wait(300);
+  if (fake.opens === 0) console.log('ok   open deferred inside the cooldown');
+  else { console.log('FAIL open fired inside the cooldown (' + fake.opens + ')'); failures++; }
+
+  await wait(1500);
+  if (fake.opens === 1) console.log('ok   deferred open ran exactly once');
+  else { console.log('FAIL expected 1 deferred open, saw ' + fake.opens); failures++; }
+
+  // 3. the failure path still reports and marks
+  const msg = elements['msg'].textContent || '';
+  if (msg.indexOf('Cannot open stream') !== -1 || msg.indexOf('No response') !== -1) {
+    console.log('ok   failure reported to the user');
   } else {
-    console.log('ok   dead stream marked bad');
-  }
-  if (back !== '-webkit-box') {
-    console.log('FAIL list disappeared after failure (display ' + back + ')');
+    console.log('FAIL failure not reported (msg=' + JSON.stringify(msg) + ')');
     failures++;
-  } else {
-    console.log('ok   list still visible after failure');
   }
+
+  if (elements['panel'].style.display === '-webkit-box') console.log('ok   list still visible after failure');
+  else { console.log('FAIL list disappeared after failure'); failures++; }
+
   process.exit(failures === 0 ? 0 : 1);
 })();

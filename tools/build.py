@@ -195,6 +195,8 @@ var DEFAULT_RATE = __RATES__;
 var tab = 0, CH = [], idx = 0, rows = [], playing = false, usingAv = false, listVisible = true, hideTimer = null;
 var RATE = {}, testing = false, testIdx = 0, testTimer = null;
 var connectTimer = null, pendingOpen = false;
+/* after a stop, the native pipeline needs a moment before the next open */
+var noOpenUntil = 0, COOLDOWN_MS = 1200, openGen = 0;
 /* category overrides chosen on the TV: channel name -> group */
 var CAT = {}, CATS = [], catMode = false, catIdx = 0, catTarget = '', catTimer = null;
 /* Diagnostics. Deliberately dumb: one line of text, no storage writes, updated around the
@@ -330,11 +332,14 @@ function hideList() {
   hintEl.textContent = 'any key: channel list   BACK: stop';
 }
 function stopPlayback() {
+  var wasPlaying = playing;
   if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
   stopCount++;
   log('stop:before');
   cancelPending();
   log('stop:after');
+  openGen++;   /* an open scheduled before this stop must never land afterwards */
+  if (wasPlaying) noOpenUntil = new Date().getTime() + COOLDOWN_MS;
   playing = false; listVisible = true;
   document.documentElement.className = '';
   document.body.className = '';
@@ -427,8 +432,17 @@ function startChannel() {
   nowEl.textContent = c.name;
   hintEl.textContent = 'BACK stop';
   msg.textContent = 'Connecting...';
-  /* let the previous teardown settle before opening the next one */
-  setTimeout(function () { playAv(c); }, 200);
+  /* let the previous teardown settle, and never open into a player that was just closed:
+     pressing OK straight after BACK waits the cooldown out instead of wedging the decoder */
+  var now = new Date().getTime();
+  var wait = Math.max(200, noOpenUntil - now);
+  var myGen = ++openGen;
+  if (wait > 250) hintEl.textContent = 'waiting for the player\u2026';
+  log('open-in:' + wait);
+  setTimeout(function () {
+    if (myGen !== openGen) return;   /* superseded or stopped: do not touch the player */
+    playAv(c);
+  }, wait);
   if (hideTimer) clearTimeout(hideTimer);
   hideTimer = setTimeout(hideList, 4000);
 }
