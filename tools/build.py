@@ -148,6 +148,7 @@ template = r'''<!DOCTYPE html>
          display:-webkit-box;-webkit-box-orient:vertical}
   #tabs{display:-webkit-box;padding:14px 16px 8px;font-size:15px;letter-spacing:1px}
   #tips{font-size:12px;color:#5f7ba8;padding:0 16px 8px}
+  #diag{position:absolute;bottom:6px;right:10px;font-size:11px;color:#3f5578;z-index:7}
   .tab{padding:6px 14px;margin-right:8px;border-radius:16px;color:#7d92b5;background:#141a24}
   .tab.on{background:#2b6cf6;color:#fff}
   #items{-webkit-box-flex:1;overflow-y:auto;padding:0 20px 20px;position:relative}
@@ -178,6 +179,7 @@ template = r'''<!DOCTYPE html>
         style="position:absolute;top:0;left:0;width:1920px;height:1080px;background:transparent;pointer-events:none;"></object>
 <div id="panel">
   <div id="tabs"></div>
+  <div id="diag"></div>
   <div id="tips">&larr; &rarr; lists &nbsp;|&nbsp; &uarr;&darr; move &nbsp;|&nbsp; OK play &nbsp;|&nbsp; <b>BACK</b> tag this channel &nbsp;|&nbsp; GREEN test</div>
   <div id="items"></div>
 </div>
@@ -195,6 +197,21 @@ var RATE = {}, testing = false, testIdx = 0, testTimer = null;
 var connectTimer = null, pendingOpen = false;
 /* category overrides chosen on the TV: channel name -> group */
 var CAT = {}, CATS = [], catMode = false, catIdx = 0, catTarget = '', catTimer = null;
+/* Diagnostics. Deliberately dumb: one line of text, no storage writes, updated around the
+   native player calls. If the decoder blocks the thread, the last string written stays on
+   screen and names the call that blocked. */
+var opCount = 0, stopCount = 0, tagCount = 0, lastEv = 'boot';
+var diagEl = null;
+function log(ev) {
+  lastEv = ev;
+  try {
+    if (!diagEl) diagEl = document.getElementById('diag');
+    var st = '?';
+    try { st = (typeof AV !== 'undefined' && AV && AV.getState) ? String(AV.getState()) : 'noAV'; }
+    catch (e) { st = 'stateErr'; }
+    diagEl.textContent = '[' + st + '] o' + opCount + ' s' + stopCount + ' t' + tagCount + ' ' + ev;
+  } catch (e) {}
+}
 var items = document.getElementById('items');
 var tabsEl = document.getElementById('tabs');
 var panel = document.getElementById('panel');
@@ -314,7 +331,10 @@ function hideList() {
 }
 function stopPlayback() {
   if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+  stopCount++;
+  log('stop:before');
   cancelPending();
+  log('stop:after');
   playing = false; listVisible = true;
   document.documentElement.className = '';
   document.body.className = '';
@@ -329,8 +349,10 @@ function cancelPending() {
   if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; }
   pendingOpen = false;
   if (AV) {
+    log('close:before');
     try { AV.stop(); } catch (e) {}
     try { AV.close(); } catch (e) {}
+    log('close:after');
   }
   usingAv = false;
 }
@@ -338,6 +360,8 @@ function playAv(c) {
   cancelPending();
   usingAv = true;
   pendingOpen = true;
+  opCount++;
+  log('open:' + c.name);
   msg.textContent = 'Connecting...';
   /* If the stream never answers, give up instead of waiting forever - this is what made a
      dead channel swallow every later selection. */
@@ -355,7 +379,9 @@ function playAv(c) {
     if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; }
   }
   try {
+    log('AV.open:before');
     AV.open(c.url);
+    log('AV.open:after');
     applyRect();
     AV.setListener({
       onbufferingstart: function () { msg.textContent = 'Buffering...'; },
@@ -367,8 +393,10 @@ function playAv(c) {
         msg.textContent = 'Stream failed (' + (e && e.name ? e.name : e) + ')';
       }
     });
+    log('prepare:before');
     AV.prepareAsync(function () {
       settled();
+      log('prepared');
       msg.textContent = '';
       /* Some streams carry audio as a separate HLS rendition (EXT-X-MEDIA); older Tizen
          firmware then plays video silently. Ask for the first audio track explicitly. */
@@ -589,6 +617,7 @@ function actionList() {
 }
 function openActions() {
   if (!CH[idx]) return;
+  log('menu');
   actMode = true;
   actIdx = 0;
   renderActions();
@@ -616,6 +645,8 @@ function closeActions() {
 }
 function applyAction() {
   var name = CH[idx].name;
+  tagCount++;
+  log('tag:' + (actIdx >= 5 ? 'category' : String(actIdx)));
   if (actIdx === 0) { RATE[name] = 3; hintEl.textContent = name + '  \u2605\u2605 very good'; }
   else if (actIdx === 1) { RATE[name] = 2; hintEl.textContent = name + '  \u2605 good'; }
   else if (actIdx === 2) { RATE[name] = 1; hintEl.textContent = name + '  \u2717 bad'; }
@@ -632,7 +663,9 @@ function applyAction() {
   saveRate();
   closeActions();
   var here = idx;
+  log('render:before');
   render(true);
+  log('render:after');
   /* Stay where the eye is: the tagged channel moves to its section, and the row under the
      cursor becomes the next channel. Following the channel instead meant a "bad" rating
      threw the selection to the bottom of the list. */
