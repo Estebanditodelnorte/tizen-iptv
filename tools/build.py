@@ -353,12 +353,15 @@ function stopPlayback() {
 function cancelPending() {
   if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; }
   pendingOpen = false;
-  /* Stop, do not close. The decoder survives far more stops than close/open cycles, and a
-     crash after a long session (o16 s6) points at that churn rather than at the stream. */
+  /* Close as well as stop. Leaving a stopped-but-open player around to be reused is what
+     produced a hang where the deferred open timer never even fired. */
   if (AV) {
     log('stop:before');
     try { AV.stop(); } catch (e) {}
     log('stop:after');
+    log('close:before');
+    try { AV.close(); } catch (e) {}
+    log('close:after');
   }
   usingAv = false;
 }

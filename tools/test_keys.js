@@ -182,8 +182,8 @@ console.log(failures === 0 ? '\nall checks passed' : '\n' + failures + ' checks 
   else { console.log('FAIL switch opened immediately (' + duringSwitch + ')'); failures++; }
   if (afterSwitch === 1) console.log('ok   switched channel opened once');
   else { console.log('FAIL switch opened ' + afterSwitch + ' times'); failures++; }
-  if (fake.closes === closesBefore) console.log('ok   switching does not close the player');
-  else { console.log('FAIL switch closed the player ' + (fake.closes - closesBefore) + ' times'); failures++; }
+  if (fake.closes > closesBefore) console.log('ok   switching tears the player down (close + open)');
+  else { console.log('FAIL switch never closed the old player'); failures++; }
 
   // 3. stop, then press OK immediately: the open must be deferred, not dropped
   press(10009);
