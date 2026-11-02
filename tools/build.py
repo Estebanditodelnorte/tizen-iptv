@@ -193,7 +193,7 @@ var LABELS = __LABELS__;
 var SECTION_ORDER = __ORDER__;
 var DEFAULT_RATE = __RATES__;
 var tab = 0, CH = [], idx = 0, rows = [], playing = false, usingAv = false, listVisible = true, hideTimer = null;
-var RATE = {}, testing = false, testIdx = 0, testTimer = null;
+var RATE = {};
 var connectTimer = null, pendingOpen = false;
 /* after a stop, the native pipeline needs a moment before the next open */
 var noOpenUntil = 0, COOLDOWN_MS = 1200, openGen = 0;
@@ -388,7 +388,6 @@ function playAv(c) {
     try { AV.stop(); } catch (e) {}
     try { AV.close(); } catch (e) {}
     usingAv = false;
-    markBad(c.name, 'no response');
     msg.textContent = 'No response from this stream';
   }, 12000);
   function settled() {
@@ -413,7 +412,6 @@ function playAv(c) {
       onbufferingcomplete: function () { msg.textContent = ''; },
       onstreamcompleted: function () { msg.textContent = 'Stream ended'; },
       onerror: function (e) {
-        markBad(c.name, (e && e.name) || 'stream failed');
         msg.textContent = 'Stream failed (' + (e && e.name ? e.name : e) + ')';
       }
     });
@@ -440,14 +438,12 @@ function playAv(c) {
     }, function (e) {
       log('prepared-err');
       settled();
-      markBad(c.name, (e && e.name) || 'prepare failed');
       msg.textContent = 'Cannot open stream (' + (e && e.name ? e.name : e) + ')';
       hardClose();          /* a failed stream leaves a wedged player: replace it */
       usingAv = false;
     });
   } catch (e) {
     settled();
-    markBad(c.name, 'avplay error');
     msg.textContent = 'AVPlay error: ' + e;
     usingAv = false;
   }
@@ -486,85 +482,10 @@ function startChannel() {
 
 /* Rating replaces the old star/broken flags: 3 = very good (top), 2 = good, 1 = bad (bottom),
    absent = unrated, which keeps its category. */
-function loadRate() {
-  var r = {}, k;
-  for (k in DEFAULT_RATE) r[k] = DEFAULT_RATE[k];      /* baked in from playlists/ratings.json */
-  try {
-    var raw = localStorage.getItem('iptv-rate');
-    if (raw) {
-      var s = JSON.parse(raw);
-      for (k in s) { if (s[k] === 0) delete r[k]; else r[k] = s[k]; }
-      return r;
-    }
-    var f = JSON.parse(localStorage.getItem('iptv-fav') || '{}');
-    for (k in f) r[k] = 3;
-    var b = JSON.parse(localStorage.getItem('iptv-bad-' + TABS[tab]) || '{}');
-    for (k in b) r[k] = 1;
-  } catch (e) {}
-  return r;
-}
-function saveRate() {
-  try { localStorage.setItem('iptv-rate', JSON.stringify(RATE)); } catch (e) {}
-}
-function markBad(name) {
-  RATE[name] = 1;
-  saveRate();
-}
+/* Rating replaces the old star/broken flags: 3 = very good (top), 2 = good, 1 = bad (bottom),
+   absent = unrated, which keeps its category. */
 /* Walk every channel in the current tab, open it, and record whether the decoder accepts it.
    This is the only test that reflects what the TV can actually play. */
-function startTest() {
-  if (testing) return;
-  if (playing) stopPlayback();
-  testing = true; testIdx = 0;
-  testStep();
-}
-function testStep() {
-  if (testIdx >= CH.length) {
-    testing = false;
-    nowEl.textContent = ''; msg.textContent = ''; hintEl.textContent = '';
-    render();
-    return;
-  }
-  var c = CH[testIdx];
-  nowEl.textContent = 'TESTING ' + (testIdx + 1) + ' / ' + CH.length;
-  hintEl.textContent = c.name + '  \u2014  GREEN to stop';
-  var done = false;
-  function finish(ok, reason) {
-    if (done) return;
-    done = true;
-    if (testTimer) { clearTimeout(testTimer); testTimer = null; }
-    if (usingAv && AV) { try { AV.stop(); } catch (e) {} try { AV.close(); } catch (e) {} usingAv = false; }
-    if (!ok) markBad(c.name, reason);
-    testIdx++;
-    setTimeout(testStep, 250);
-  }
-  testTimer = setTimeout(function () { finish(false, 'timeout'); }, 9000);
-  try {
-    usingAv = true;
-    AV.open(c.url);
-    AV.setListener({ onerror: function (e) { finish(false, (e && e.name) || 'error'); } });
-    AV.prepareAsync(function () { finish(true); },
-                    function (e) { finish(false, (e && e.name) || 'prepare_failed'); });
-  } catch (e) {
-    finish(false, 'open_failed');
-  }
-}
-
-/* Number keys assign a category straight onto the highlighted channel - no menu, because the
-   colour keys on some remotes never reach a web app. 1..9 and 0. */
-var NUMCATS = {
-  49: 'News', 50: 'Sports', 51: 'Kids', 52: 'Music', 53: 'Movies',
-  54: 'Documentary', 55: 'Entertainment', 56: 'Religious', 57: 'Weather', 48: 'Other'
-};
-function assignCat(cat) {
-  if (!CH[idx]) return;
-  var name = CH[idx].name;
-  CAT[name] = cat;
-  saveCat();
-  render(true);
-  hintEl.textContent = name + '  \u2192  ' + cat;
-}
-
 /* Rating replaces the old star/broken flags: 3 = very good (top), 2 = good, 1 = bad (bottom),
    absent = unrated, which keeps its category. */
 function loadRate() {
@@ -587,66 +508,8 @@ function loadRate() {
 function saveRate() {
   try { localStorage.setItem('iptv-rate', JSON.stringify(RATE)); } catch (e) {}
 }
-function markBad(name) {
-  RATE[name] = 1;
-  saveRate();
-}
 /* Walk every channel in the current tab, open it, and record whether the decoder accepts it.
    This is the only test that reflects what the TV can actually play. */
-function startTest() {
-  if (testing) return;
-  if (playing) stopPlayback();
-  testing = true; testIdx = 0;
-  testStep();
-}
-function testStep() {
-  if (testIdx >= CH.length) {
-    testing = false;
-    nowEl.textContent = ''; msg.textContent = ''; hintEl.textContent = '';
-    render();
-    return;
-  }
-  var c = CH[testIdx];
-  nowEl.textContent = 'TESTING ' + (testIdx + 1) + ' / ' + CH.length;
-  hintEl.textContent = c.name + '  \u2014  GREEN to stop';
-  var done = false;
-  function finish(ok, reason) {
-    if (done) return;
-    done = true;
-    if (testTimer) { clearTimeout(testTimer); testTimer = null; }
-    if (usingAv && AV) { try { AV.stop(); } catch (e) {} try { AV.close(); } catch (e) {} usingAv = false; }
-    if (!ok) markBad(c.name, reason);
-    testIdx++;
-    setTimeout(testStep, 250);
-  }
-  testTimer = setTimeout(function () { finish(false, 'timeout'); }, 9000);
-  try {
-    usingAv = true;
-    AV.open(c.url);
-    AV.setListener({ onerror: function (e) { finish(false, (e && e.name) || 'error'); } });
-    AV.prepareAsync(function () { finish(true); },
-                    function (e) { finish(false, (e && e.name) || 'prepare_failed'); });
-  } catch (e) {
-    finish(false, 'open_failed');
-  }
-}
-
-/* Number keys assign a category straight onto the highlighted channel - no menu, because the
-   colour keys on some remotes never reach a web app. 1..9 and 0. */
-var NUMCATS = {
-  49: 'News', 50: 'Sports', 51: 'Kids', 52: 'Music', 53: 'Movies',
-  54: 'Documentary', 55: 'Entertainment', 56: 'Religious', 57: 'Weather', 48: 'Other'
-};
-function assignCat(cat) {
-  if (!CH[idx]) return;
-  var name = CH[idx].name;
-  CAT[name] = cat;
-  saveCat();
-  render(true);
-  hintEl.textContent = name + '  \u2192  ' + cat;
-}
-
-
 var actMode = false, actIdx = 0;
 function ratingOf(name) { return RATE[name] || 0; }
 function actionList() {
@@ -804,27 +667,12 @@ document.addEventListener('keydown', function (e) {
     e.preventDefault();
     return;
   }
-  if (testing) {
-    if (k === 404) {
-      testing = false;
-      if (testTimer) { clearTimeout(testTimer); testTimer = null; }
-      try { AV.stop(); } catch (x) {}
-      try { AV.close(); } catch (x) {}
-      usingAv = false;
-      nowEl.textContent = ''; hintEl.textContent = '';
-      render();
-    }
-    e.preventDefault();
-    return;
-  }
   if (!listVisible) { showList(); e.preventDefault(); return; }
   if (k === 37) { tab = (tab + TABS.length - 1) % TABS.length; render(); }
   else if (k === 39) { tab = (tab + 1) % TABS.length; render(); }
   else if (k === 38) { idx = Math.max(0, idx - 1); paint(); }
   else if (k === 40) { idx = Math.min(CH.length - 1, idx + 1); paint(); }
   else if (k === 13 || k === 415) { startChannel(); }
-  else if (k >= 48 && k <= 57) { assignCat(NUMCATS[k]); }
-  else if (k === 404) { startTest(); }
   else if (k === 10009 || k === 27 || k === 8) {
     if (playing) stopPlayback(); else openActions();
   }
