@@ -38,7 +38,7 @@ vm.runInContext(code, sandbox, { filename: 'app.js' });
 const press = (k) => keyHandler({ keyCode: k, preventDefault() {} });
 const headers = () => elements['items'].children.filter((c) => c.className === 'grp').map((c) => c.textContent);
 
-const tabs = ['CANADA', 'MEXICO', 'SPORTS', 'PUBLIC', 'KIDS', 'LEARN', 'MUSIC'];
+const tabs = ['CANADA', 'MEXICO', 'SPORTS', 'PUBLIC', 'KIDS', 'LEARN', 'MUSIC', 'MOVIES', 'NEWS'];
 for (const name of tabs) {
   const heads = headers();
   const counts = heads.map((h) => {

@@ -21,6 +21,8 @@ TABS = [
     ('kids', 'KIDS'),
     ('learn', 'LEARN'),
     ('music', 'MUSIC'),
+    ('movies', 'MOVIES'),
+    ('news', 'NEWS'),
 ]
 
 # Order of the sections inside every tab. V3 / V2 / V1 are the ratings given on the TV;
@@ -54,6 +56,7 @@ def is_fragile(url):
 CAT_PRIORITY = [s for s in SECTION_ORDER if s not in ('V3', 'V2', 'V1', '*', 'FRAGILE')]
 
 HOME_CATEGORY = {'sports': 'Sports', 'kids': 'Kids', 'learn': 'Education', 'music': 'Music',
+                 'movies': 'Movies', 'news': 'News',
                  'public': 'Education', 'mexico': 'General', 'canada': 'General'}
 
 def normalise_group(raw, tab=''):
@@ -228,6 +231,8 @@ try { if (typeof webapis !== 'undefined' && webapis.avplay) AV = webapis.avplay;
 
 function buildTabs() {
   tabsEl.innerHTML = '';
+  /* 9 tabs do not fit at 15px inside the 44% panel */
+  tabsEl.style.fontSize = TABS.length > 8 ? '12px' : (TABS.length > 7 ? '13px' : '15px');
   for (var i = 0; i < TABS.length; i++) {
     var t = document.createElement('div');
     t.className = 'tab' + (i === tab ? ' on' : '');
