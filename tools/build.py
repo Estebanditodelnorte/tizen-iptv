@@ -362,25 +362,6 @@ function cancelPending() {
   }
   usingAv = false;
 }
-/* A stream that blocks prepareAsync kills the app before any callback runs, so nothing can
-   mark it. The name is written before opening and cleared when prepare succeeds: if it is
-   still there on the next launch, the previous session died on that channel. */
-function markTrying(name) {
-  try { localStorage.setItem('iptv-trying', name); } catch (e) {}
-}
-function clearTrying() {
-  try { localStorage.removeItem('iptv-trying'); } catch (e) {}
-}
-function recoverInterrupted() {
-  var name = null;
-  try { name = localStorage.getItem('iptv-trying'); } catch (e) {}
-  if (!name) return;
-  RATE = loadRate();
-  RATE[name] = 1;                 /* it froze the player: never lead the user back to it */
-  saveRate();
-  clearTrying();
-  hintEl.textContent = name + ' froze the player \u2014 marked bad';
-}
 function hardClose() {
   if (!AV) return;
   log('close:before');
@@ -413,7 +394,6 @@ function playAv(c) {
   }
   try {
     log('AV.open:before');
-    markTrying(c.name);
     try {
       AV.open(c.url);
     } catch (openErr) {
@@ -437,7 +417,6 @@ function playAv(c) {
     log('prepare:before');
     AV.prepareAsync(function () {
       log('prepared-ok');
-      clearTrying();
       settled();
       log('prepared');
       msg.textContent = '';
@@ -445,6 +424,16 @@ function playAv(c) {
          firmware then plays video silently. Ask for the first audio track explicitly. */
       try { AV.setSelectTrack('AUDIO', 0); } catch (e) {}
       try { AV.play(); } catch (e) { msg.textContent = 'Play error: ' + e; }
+      /* some streams (LCN) only expose the audio track once playback is running: retry a few
+         times rather than giving up on the first, often-early, request */
+      var audioTries = 0;
+      (function audioRetry() {
+        if (!usingAv || !playing) return;
+        try { AV.setSelectTrack('AUDIO', 0); } catch (e) {}
+        log('audio-retry:' + audioTries);
+        audioTries++;
+        if (audioTries < 4) setTimeout(audioRetry, 700 * audioTries);
+      })();
     }, function (e) {
       log('prepared-err');
       settled();
@@ -842,7 +831,6 @@ document.addEventListener('keydown', function (e) {
 
 CAT = loadCat();
 buildCats();
-recoverInterrupted();
 render();
 </script></body></html>
 '''

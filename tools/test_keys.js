@@ -210,38 +210,5 @@ console.log(failures === 0 ? '\nall checks passed' : '\n' + failures + ' checks 
   if (elements['panel'].style.display === '-webkit-box') console.log('ok   list still visible after failure');
   else { console.log('FAIL list disappeared after failure'); failures++; }
 
-  // a fresh boot that finds the marker left by a crash must mark that channel bad
-  const store2 = { 'iptv-trying': 'Haunted Channel (720p)' };
-  const elements2 = {};
-  const ctx2 = {
-    document: {
-      getElementById(id) { return elements2[id] || (elements2[id] = new El()); },
-      createElement() { return new El(); },
-      addEventListener() {},
-      documentElement: new El(),
-      body: new El(),
-    },
-    window: { innerWidth: 1920, innerHeight: 1080 },
-    localStorage: {
-      getItem(k) { return Object.prototype.hasOwnProperty.call(store2, k) ? store2[k] : null; },
-      setItem(k, v) { store2[k] = String(v); },
-      removeItem(k) { delete store2[k]; },
-    },
-    webapis: undefined,
-    setTimeout, clearTimeout, console, JSON, Math, Date,
-  };
-  ctx2.window.webapis = undefined;
-  vm.createContext(ctx2);
-  vm.runInContext(code, ctx2, { filename: 'app2.js' });
-
-  let saved2 = {};
-  try { saved2 = JSON.parse(store2['iptv-rate'] || '{}'); } catch (e) {}
-  if (saved2['Haunted Channel (720p)'] === 1 && !store2['iptv-trying']) {
-    console.log('ok   crash marker recovered and marked bad on next launch');
-  } else {
-    console.log('FAIL crash marker not recovered (' + JSON.stringify(store2) + ')');
-    failures++;
-  }
-
   process.exit(failures === 0 ? 0 : 1);
 })();
