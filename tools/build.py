@@ -198,7 +198,7 @@ var connectTimer = null, pendingOpen = false;
 /* after a stop, the native pipeline needs a moment before the next open */
 var noOpenUntil = 0, COOLDOWN_MS = 1200, openGen = 0;
 /* category overrides chosen on the TV: channel name -> group */
-var CAT = {}, CATS = [], catMode = false, catIdx = 0, catTarget = '', catTimer = null;
+var CAT = {}, CATS = [];
 /* Diagnostics. Deliberately dumb: one line of text, no storage writes, updated around the
    native player calls. If the decoder blocks the thread, the last string written stays on
    screen and names the call that blocked. */
@@ -608,45 +608,6 @@ function buildCats() {
   CATS.sort();
 }
 /* RIGHT on a channel opens this: pick a category and the channel moves there for good. */
-function openCat() {
-  if (!CH[idx]) return;
-  catTarget = CH[idx].name;
-  catMode = true;
-  catIdx = 0;
-  var current = CAT[catTarget] || CH[idx].group;
-  for (var i = 0; i < CATS.length; i++) if (CATS[i] === current) catIdx = i;
-  if (catTimer) clearTimeout(catTimer);
-  catTimer = setTimeout(closeCat, 20000);   /* never leave the picker in the way */
-  renderCat();
-}
-function renderCat() {
-  var box = document.getElementById('cat');
-  var html = '<h2>' + (catTarget || '') + '</h2><div class="sub">Where should this channel go? &nbsp; OK choose &nbsp; BACK cancel</div>';
-  for (var i = 0; i < CATS.length; i++) {
-    html += '<div class="cat' + (i === catIdx ? ' sel' : '') + '">' + CATS[i] + '</div>';
-  }
-  box.innerHTML = html;
-  box.style.display = 'block';
-  var sel = box.querySelector('.cat.sel');
-  if (sel && sel.scrollIntoView) {
-    var top = sel.offsetTop, st = box.scrollTop, ch = box.clientHeight;
-    if (top < st) box.scrollTop = top - 8;
-    else if (top + sel.offsetHeight > st + ch) box.scrollTop = top + sel.offsetHeight - ch + 8;
-  }
-}
-function closeCat() {
-  catMode = false;
-  if (catTimer) { clearTimeout(catTimer); catTimer = null; }
-  document.getElementById('cat').style.display = 'none';
-}
-function applyCat() {
-  CAT[catTarget] = CATS[catIdx];
-  saveCat();
-  closeCat();
-  render();
-  hintEl.textContent = catTarget + ' -> ' + CATS[catIdx];
-}
-
 document.addEventListener('keydown', function (e) {
   var k = e.keyCode, handled = true;
   if (actMode) {
@@ -654,15 +615,6 @@ document.addEventListener('keydown', function (e) {
     else if (k === 40) { actIdx = Math.min(actionList().length - 1, actIdx + 1); renderActions(); }
     else if (k === 13 || k === 415) { applyAction(); }
     else if (k === 10009 || k === 27 || k === 8) { closeActions(); }
-    else { handled = false; }
-    e.preventDefault();
-    return;
-  }
-  if (catMode) {
-    if (k === 38) { catIdx = Math.max(0, catIdx - 1); renderCat(); }
-    else if (k === 40) { catIdx = Math.min(CATS.length - 1, catIdx + 1); renderCat(); }
-    else if (k === 13 || k === 415) { applyCat(); }
-    else if (k === 10009 || k === 27 || k === 8) { closeCat(); }
     else { handled = false; }
     e.preventDefault();
     return;
