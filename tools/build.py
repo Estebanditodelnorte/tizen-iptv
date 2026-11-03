@@ -430,16 +430,6 @@ function playAv(c) {
          firmware then plays video silently. Ask for the first audio track explicitly. */
       try { AV.setSelectTrack('AUDIO', 0); } catch (e) {}
       try { AV.play(); } catch (e) { msg.textContent = 'Play error: ' + e; }
-      /* some streams (LCN) only expose the audio track once playback is running: retry a few
-         times rather than giving up on the first, often-early, request */
-      var audioTries = 0;
-      (function audioRetry() {
-        if (!usingAv || !playing) return;
-        try { AV.setSelectTrack('AUDIO', 0); } catch (e) {}
-        log('audio-retry:' + audioTries);
-        audioTries++;
-        if (audioTries < 4) setTimeout(audioRetry, 700 * audioTries);
-      })();
     }, function (e) {
       log('prepared-err');
       settled();
